@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="GTO Racing League championship archive and race results." />
+    <title>GTO Racing League | Championship Archive</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="GTO Racing League home">
+        <span class="brand-mark" aria-hidden="true">GTO</span>
+        <span class="brand-copy"><strong>Racing League</strong><small>Championship Archive</small></span>
+      </a>
+      <nav aria-label="Section navigation">
+        <a href="#standings">Standings</a>
+        <a href="#car-stats">Car stats</a>
+        <a href="#driver-profile">Drivers</a>
+        <a href="#records">Records</a>
+        <a href="#schedule">Schedule</a>
+        <a href="#results">Results</a>
+      </nav>
+    </header>
+
+    <main id="main-content">
+      <section id="top" class="hero" aria-labelledby="hero-title">
+        <div class="hero-grid" aria-hidden="true"></div>
+        <div class="hero-copy">
+          <p class="eyebrow">Official statbook</p>
+          <h1 id="hero-title">Every lap. Every point.<br /><em>One championship.</em></h1>
+          <p class="hero-intro">Explore the GTO Racing League’s season-by-season championship history, with race schedules, round results, and driver standings in one place.</p>
+          <a class="button button-primary" href="#standings">View championship table <span aria-hidden="true">↓</span></a>
+        </div>
+        <div class="hero-number" aria-label="Four seasons in the archive">
+          <span>04</span>
+          <small>seasons<br />archived</small>
+        </div>
+      </section>
+
+      <section class="season-picker section-wrap" aria-labelledby="season-title">
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">Championship archive</p>
+            <h2 id="season-title">Select a season</h2>
+          </div>
+          <p id="season-summary" class="section-note" aria-live="polite"></p>
+        </div>
+        <div id="season-tabs" class="season-tabs" role="tablist" aria-label="Choose season"></div>
+      </section>
+
+      <section class="section-wrap snapshot" aria-label="Season snapshot">
+        <div id="stat-cards" class="stat-cards"></div>
+      </section>
+
+      <section id="standings" class="section-wrap section-block" aria-labelledby="standings-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Race to the flag</p>
+            <h2 id="standings-title">Championship standings</h2>
+          </div>
+          <p class="section-note">Click any column heading to sort. Select a driver name to open their full series profile.</p>
+        </div>
+        <div class="table-shell">
+          <table class="standings-table">
+            <thead id="standings-headers">
+              <tr>
+                <th scope="col"><button class="sort-button" type="button" data-sort-key="lapsLedPercentage" aria-pressed="false">Laps led % <span class="sort-icon" aria-hidden="true">↕</span></button></th>
+                <th scope="col"><button class="sort-button" type="button" data-sort-key="championshipPosition" aria-pressed="true">Pos <span class="sort-icon" aria-hidden="true">↑</span></button></th>
+                <th scope="col"><button class="sort-button" type="button" data-sort-key="name" aria-pressed="false">Driver <span class="sort-icon" aria-hidden="true">↕</span></button></th>
+                <th scope="col"><button class="sort-button" type="button" data-sort-key="points" aria-pressed="false">Points <span class="sort-icon" aria-hidden="true">↕</span></button></th>
+                <th scope="col"><button class="sort-button" type="button" data-sort-key="wins" aria-pressed="false">Wins <span class="sort-icon" aria-hidden="true">↕</span></button></th>
+                <th scope="col"><button class="sort-button" type="button" data-sort-key="podiums" aria-pressed="false">Podiums <span class="sort-icon" aria-hidden="true">↕</span></button></th>
+                <th scope="col"><button class="sort-button" type="button" data-sort-key="poles" aria-pressed="false">Pole positions <span class="sort-icon" aria-hidden="true">↕</span></button></th>
+                <th scope="col"><button class="sort-button" type="button" data-sort-key="fastestLaps" aria-pressed="false">Fastest laps <span class="sort-icon" aria-hidden="true">↕</span></button></th>
+                <th scope="col"><button class="sort-button" type="button" data-sort-key="completed" aria-pressed="false">Starts <span class="sort-icon" aria-hidden="true">↕</span></button></th>
+                <th scope="col"><button class="sort-button" type="button" data-sort-key="avgFinish" aria-pressed="false">Avg. finish <span class="sort-icon" aria-hidden="true">↕</span></button></th>
+                <th scope="col"><button class="sort-button" type="button" data-sort-key="avgQualifying" aria-pressed="false">Avg. qualifying <span class="sort-icon" aria-hidden="true">↕</span></button></th>
+                <th scope="col"><button class="sort-button" type="button" data-sort-key="lapsLed" aria-pressed="false">Laps led <span class="sort-icon" aria-hidden="true">↕</span></button></th>
+              </tr>
+            </thead>
+            <tbody id="standings-body"></tbody>
+          </table>
+          <p id="standings-sort-status" class="sr-only" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <section id="car-stats" class="section-wrap section-block car-stats-section" aria-labelledby="car-stats-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">By race car</p>
+            <h2 id="car-stats-title">Car-class statistics</h2>
+          </div>
+          <p class="section-note">All archived rounds are grouped from the car type in each event name. Unrecognized labels are listed as One-off.</p>
+        </div>
+        <div id="car-class-tabs" class="car-class-tabs" role="tablist" aria-label="Choose car class"></div>
+        <div id="car-class-content" class="car-class-content" aria-live="polite"></div>
+      </section>
+
+      <section id="driver-profile" class="section-wrap section-block driver-profile" aria-labelledby="driver-profile-title">
+        <div class="section-heading profile-heading">
+          <div>
+            <p class="eyebrow">Driver archive</p>
+            <h2 id="driver-profile-title">Driver profile</h2>
+          </div>
+          <label class="driver-picker" for="driver-select">
+            <span>Choose driver</span>
+            <select id="driver-select"></select>
+          </label>
+        </div>
+        <div id="driver-profile-content" aria-live="polite"></div>
+      </section>
+
+      <section id="records" class="section-wrap section-block records-section" aria-labelledby="records-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">All-time leaderboard</p>
+            <h2 id="records-title">Series records</h2>
+          </div>
+          <p class="section-note">Browse career totals from every scored round in the archive.</p>
+        </div>
+        <div class="records-controls" aria-label="Records filters">
+          <div id="record-type-tabs" class="record-type-tabs" role="tablist" aria-label="Record type">
+            <button type="button" role="tab" class="record-type-tab" data-record-type="race" aria-selected="true">Race finishes</button>
+            <button type="button" role="tab" class="record-type-tab" data-record-type="qualifying" aria-selected="false">Qualifying</button>
+            <button type="button" role="tab" class="record-type-tab" data-record-type="special" aria-selected="false">Other records</button>
+            <button type="button" role="tab" class="record-type-tab" data-record-type="lead-percentage" aria-selected="false">Laps led %</button>
+          </div>
+          <div id="record-position-tabs" class="position-tabs" aria-label="Position filter"></div>
+        </div>
+        <div id="lead-period-tabs" class="lead-period-tabs" aria-label="Laps led period"></div>
+        <div id="records-content" class="records-content" aria-live="polite"></div>
+      </section>
+
+      <section id="schedule" class="section-wrap section-block" aria-labelledby="schedule-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Calendar</p>
+            <h2 id="schedule-title">Season schedule</h2>
+          </div>
+          <p class="section-note">Winner shown for completed rounds.</p>
+        </div>
+        <div id="race-cards" class="race-grid"></div>
+      </section>
+
+      <section id="results" class="section-wrap section-block results-section" aria-labelledby="results-title">
+        <div class="section-heading results-heading">
+          <div>
+            <p class="eyebrow">Round by round</p>
+            <h2 id="results-title">Race results</h2>
+          </div>
+          <label class="round-picker" for="round-select">
+            <span>Choose round</span>
+            <select id="round-select"></select>
+          </label>
+        </div>
+        <div id="round-results" class="round-results" aria-live="polite"></div>
+      </section>
+
+      <section class="section-wrap scoring" aria-labelledby="scoring-title">
+        <div class="scoring-intro">
+          <p class="eyebrow">Points system</p>
+          <h2 id="scoring-title">Finish strong</h2>
+          <p>Championship points are awarded to the top 15 finishers. Bonus-point notation from the original score sheets remains reflected in the total points.</p>
+        </div>
+        <div id="points-system" class="points-system" aria-label="Points scoring table"></div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p><strong>GTO Racing League</strong> · Championship Archive</p>
+      <p>Season statistics from the supplied score sheets.</p>
+    </footer>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
