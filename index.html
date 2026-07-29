@@ -17,12 +17,12 @@
       <nav aria-label="Section navigation">
         <a href="#standings">Standings</a>
         <a href="#car-stats">Car stats</a>
+        <a href="#comparison">Compare</a>
         <a href="#driver-profile">Drivers</a>
         <a href="#records">Records</a>
-        <a href="#schedule">Schedule</a>
         <a href="#results">Results</a>
-        <a href="#comparison">Compare</a>
         <a href="#track-history">Tracks</a>
+        <a href="#schedule">Schedule</a>
       </nav>
     </header>
 
@@ -114,6 +114,18 @@
         <div id="car-class-content" class="car-class-content" aria-live="polite"></div>
       </section>
 
+      <section id="comparison" class="section-wrap section-block comparison-section" aria-labelledby="comparison-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Driver vs. driver</p>
+            <h2 id="comparison-title">Driver comparison</h2>
+          </div>
+          <p class="section-note">Compare career totals or recalculate the matchup inside any individual season.</p>
+        </div>
+        <div id="comparison-controls" class="comparison-controls"></div>
+        <div id="comparison-content" class="comparison-content" aria-live="polite"></div>
+      </section>
+
       <section id="driver-profile" class="section-wrap section-block driver-profile" aria-labelledby="driver-profile-title">
         <div class="section-heading profile-heading">
           <div>
@@ -150,17 +162,6 @@
         <div id="records-content" class="records-content" aria-live="polite"></div>
       </section>
 
-      <section id="schedule" class="section-wrap section-block" aria-labelledby="schedule-title">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Calendar</p>
-            <h2 id="schedule-title">Season schedule</h2>
-          </div>
-          <p class="section-note">Winner shown for completed rounds.</p>
-        </div>
-        <div id="race-cards" class="race-grid"></div>
-      </section>
-
       <section id="results" class="section-wrap section-block results-section" aria-labelledby="results-title">
         <div class="section-heading results-heading">
           <div>
@@ -175,18 +176,6 @@
         <div id="round-results" class="round-results" aria-live="polite"></div>
       </section>
 
-      <section id="comparison" class="section-wrap section-block comparison-section" aria-labelledby="comparison-title">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Driver vs. driver</p>
-            <h2 id="comparison-title">Driver comparison</h2>
-          </div>
-          <p class="section-note">Compare career totals or recalculate the matchup inside any individual season.</p>
-        </div>
-        <div id="comparison-controls" class="comparison-controls"></div>
-        <div id="comparison-content" class="comparison-content" aria-live="polite"></div>
-      </section>
-
       <section id="track-history" class="section-wrap section-block track-history-section" aria-labelledby="track-history-title">
         <div class="section-heading">
           <div>
@@ -197,6 +186,17 @@
         </div>
         <div id="track-history-controls" class="track-history-controls"></div>
         <div id="track-history-content" class="track-history-content" aria-live="polite"></div>
+      </section>
+
+      <section id="schedule" class="section-wrap section-block" aria-labelledby="schedule-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Calendar</p>
+            <h2 id="schedule-title">Season schedule</h2>
+          </div>
+          <p class="section-note">Winner shown for completed rounds.</p>
+        </div>
+        <div id="race-cards" class="race-grid"></div>
       </section>
 
       <section class="section-wrap scoring" aria-labelledby="scoring-title">

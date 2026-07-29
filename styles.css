@@ -355,6 +355,18 @@ tbody tr:hover { background: #fbfcfe; }
 .back-to-top:hover { background: var(--blue); }
 .back-to-top.is-visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
 
+/* Wide archive layout and compact result indicators */
+.site-header, .hero, .section-wrap, .site-footer { width: min(1600px, calc(100% - 48px)); }
+.table-shell, .mini-table-shell { overflow-x: hidden; }
+.chart-scroll { overflow-x: hidden; }
+.chart-scroll svg { min-width: 0; }
+.result-name { display: grid; gap: 5px; }
+.result-indicators { display: flex; flex-wrap: wrap; gap: 3px; }
+.result-indicators:empty { display: none; }
+.result-indicators .result-badge { margin: 0; padding: 3px 5px; font-size: 8px; }
+.joke-record { background: var(--card); }
+.joke-record > p { display: none; }
+
 @media (max-width: 880px) {
   .race-summary-grid { grid-template-columns: repeat(3, 1fr); }
   .track-summary { grid-template-columns: 1fr; }
@@ -378,4 +390,15 @@ tbody tr:hover { background: #fbfcfe; }
   .track-summary-grid { grid-template-columns: repeat(2, 1fr); }
   .track-event-list { grid-template-columns: 1fr; }
   .back-to-top { right: 12px; bottom: 12px; width: 44px; height: 44px; }
+  .site-header, .site-footer { width: min(100% - 16px, 1600px); }
+  .section-wrap, .hero { width: 100%; }
+  .table-shell, .mini-table-shell { overflow-x: hidden; }
+  table, .standings-table, .car-class-table, .profile-table, .race-log, .records-table, .lead-percentage-table, .results-table, .comparison-table { width: 100%; min-width: 0; table-layout: fixed; }
+  .standings-table th, .standings-table td, .car-class-table th, .car-class-table td { padding: 7px 3px; font-size: 8px; overflow-wrap: anywhere; }
+  .standings-table th { font-size: 6px; letter-spacing: 0; }
+  .standings-table .points-track { display: none; }
+  .standings-table .sort-button { display: inline; }
+  .profile-table th, .profile-table td, .records-table th, .records-table td, .results-table th, .results-table td, .comparison-table th, .comparison-table td { padding: 8px 5px; font-size: 9px; overflow-wrap: anywhere; }
+  .chart-scroll { overflow-x: hidden; }
+  .chart-scroll svg { width: 100%; min-width: 0; }
 }

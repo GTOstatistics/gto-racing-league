@@ -364,7 +364,14 @@
   function enhResultHasQualifying(result) { return result && result.qualifyingPosition !== null && result.qualifyingPosition !== undefined; }
   function enhPositionChange(result) { return enhResultHasFinish(result) && enhResultHasQualifying(result) ? result.qualifyingPosition - result.position : null; }
   function enhChange(value) { return value === null || value === undefined ? '—' : (value > 0 ? '+' : '') + value; }
-  function enhTrackName(race) { return String(race.name || 'TBC').replace(/\s*\([^)]+\)\s*$/, '').trim() || 'TBC'; }
+  function enhTrackName(race) {
+    const raw = String(race.name || 'TBC').replace(/\s*\([^)]+\)\s*$/, '').trim();
+    const compact = raw.toLowerCase().replace(/[^a-z0-9]+/g, '');
+    if (compact === 'lemans' || compact === 'houratlemans' || compact === 'houroflemans') return 'Le Mans';
+    if (compact === 'daytonarc' || compact === 'daytonaroadcourse') return 'Daytona Road Course';
+    if (/n.rburgring/i.test(raw) || /^gr\.?\s*3\s+n/i.test(raw)) return 'Nurburgring';
+    return raw || 'TBC';
+  }
   function enhRoundLabel(entry) { return entry.season.name + ' R' + (entry.roundIndex + 1); }
   function enhColor(name) {
     let value = 0;
@@ -416,7 +423,7 @@
       const driver = round.season.drivers.find((item) => item.name === name);
       const result = driver ? driver.results[round.roundIndex] : null;
       const entry = result ? { ...result, name, season: round.season, seasonIndex: round.seasonIndex, race: round.race, roundIndex: round.roundIndex } : null;
-      if (entry && predicate(entry)) {
+      if (entry && enhResultHasFinish(entry) && predicate(entry)) {
         if (!current) current = { length: 0, start: entry, end: entry };
         current.length += 1; current.end = entry;
         if (!best || current.length > best.length) best = { ...current };
@@ -605,7 +612,9 @@
   function renderDriverProfile() {
     const driver = getCareerDriver(state.selectedDriver); if (!driver) { elements.driverProfile.innerHTML = '<p class="no-profile">No driver history is available.</p>'; return; }
     if (!state.profileTab) state.profileTab = 'overview';
-    if (!state.profileRaceSeason) state.profileRaceSeason = 'all';
+    if (!state.profileRaceSeason || (state.profileRaceSeason !== 'all' && !driver.seasons.some(({ season }) => season.id === state.profileRaceSeason))) {
+      state.profileRaceSeason = driver.seasons.slice().sort((a, b) => b.seasonIndex - a.seasonIndex)[0]?.season.id || 'all';
+    }
     const bests = enhCareerBests(driver.name);
     const hero = '<article class="profile-hero"><div><p class="eyebrow">Career at a glance</p><h3>' + escapeHtml(driver.name) + '</h3><p>' + driver.seasons.length + ' season' + (driver.seasons.length === 1 ? '' : 's') + ' · ' + driver.completed.length + ' race start' + (driver.completed.length === 1 ? '' : 's') + ' · ' + number.format(driver.points) + ' career points</p></div><div class="profile-metrics"><div><strong>' + driver.wins + '</strong><span>Wins</span></div><div><strong>' + driver.podiums + '</strong><span>Podiums</span></div><div><strong>' + driver.poles + '</strong><span>Poles</span></div><div><strong>' + driver.fastestLaps + '</strong><span>Fastest laps</span></div><div><strong>' + driver.lapsLed + '</strong><span>Laps led</span></div></div></article>' + enhCareerBestsBox(bests) + enhProfileTabs();
     if (state.profileTab === 'tracks') { elements.driverProfile.innerHTML = hero + enhProfileTracks(driver); return; }
@@ -867,12 +876,15 @@
     const standings = calculateStandings(getSeason()); renderTabs(); renderOverview(standings); renderCarClassStats(); renderStandings(standings); renderSchedule(); renderRoundPicker(); renderRoundResults(); renderComparison(); renderTrackHistory(); renderDidYouKnow();
   }
   function openDriver(name, scroll) {
-    if (!getCareerDriver(name)) return; state.selectedDriver = name; renderProfileSelector(); renderDriverProfile();
+    const driver = getCareerDriver(name); if (!driver) return;
+    state.selectedDriver = name;
+    state.profileRaceSeason = driver.seasons.slice().sort((a, b) => b.seasonIndex - a.seasonIndex)[0]?.season.id || 'all';
+    renderProfileSelector(); renderDriverProfile();
     if (scroll !== false) document.querySelector('#driver-profile').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   function setupEnhancedArchive() {
     Object.assign(state, {
-      progressionMode: 'all', progressionSelected: new Set(), profileTab: 'overview', profileRaceSeason: 'all',
+      progressionMode: 'all', progressionSelected: new Set(), profileTab: 'overview', profileRaceSeason: null,
       profileTrackSortKey: 'track', profileTrackSortDirection: 'asc', compareSeason: 'all', extraSorts: {}, didYouKnowIndex: 0,
       roundSortKey: 'position', roundSortDirection: 'asc'
     });
@@ -925,6 +937,54 @@
     }
     window.setInterval(() => { state.didYouKnowIndex += 1; renderDidYouKnow(); }, 9000);
   }
+  function enhProfileChartSvg(driver, entries) {
+    const complete = entries.filter((entry) => enhResultHasFinish(entry)).slice().sort((a, b) => a.seasonIndex - b.seasonIndex || a.roundIndex - b.roundIndex);
+    if (!complete.length) return '<p class="no-profile">No classified finishes are available for this chart.</p>';
+    const width = 900; const height = 360; const margin = { top: 28, right: 28, bottom: 62, left: 66 };
+    const maxPosition = Math.max(15, ...complete.map((entry) => entry.position));
+    const plotWidth = width - margin.left - margin.right; const plotHeight = height - margin.top - margin.bottom;
+    const lineX = (index) => margin.left + (complete.length < 2 ? plotWidth / 2 : index / (complete.length - 1) * plotWidth);
+    const lineY = (value) => margin.top + (value - 1) / Math.max(maxPosition - 1, 1) * plotHeight;
+    const points = complete.map((entry, index) => ({ x: lineX(index), y: lineY(entry.position) }));
+    const yGrid = Array.from({ length: maxPosition }, (_, index) => '<line class="chart-grid" x1="' + margin.left + '" x2="' + (width - margin.right) + '" y1="' + lineY(index + 1) + '" y2="' + lineY(index + 1) + '"></line><text class="chart-axis" x="' + (margin.left - 10) + '" y="' + (lineY(index + 1) + 4) + '" text-anchor="end">P' + (index + 1) + '</text>').join('');
+    const labelEvery = Math.max(1, Math.ceil(complete.length / 10));
+    const xLabels = points.map((point, index) => (index === 0 || index === points.length - 1 || index % labelEvery === 0) ? '<text class="chart-axis" x="' + point.x + '" y="' + (height - margin.bottom + 22) + '" text-anchor="middle">' + (index + 1) + '</text>' : '').join('');
+    return '<div class="profile-charts"><article><h4>Finishing-position trend</h4><p>Each point is a classified series start. P1 is at the top.</p><div class="chart-scroll"><svg viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="Finishing position by race number"><line class="chart-axis-line" x1="' + margin.left + '" x2="' + (width - margin.right) + '" y1="' + (height - margin.bottom) + '" y2="' + (height - margin.bottom) + '"></line><line class="chart-axis-line" x1="' + margin.left + '" x2="' + margin.left + '" y1="' + margin.top + '" y2="' + (height - margin.bottom) + '"></line>' + yGrid + xLabels + '<path class="progression-line" stroke="' + enhColor(driver.name) + '" d="' + enhSvgLine(points) + '"></path>' + points.map((point, index) => '<circle cx="' + point.x + '" cy="' + point.y + '" r="4" fill="' + enhColor(driver.name) + '"><title>' + escapeHtml(enhRoundLabel(complete[index]) + ': P' + complete[index].position) + '</title></circle>').join('') + '<text class="chart-axis" x="' + (margin.left + plotWidth / 2) + '" y="' + (height - 12) + '" text-anchor="middle">Race number in series</text><text class="chart-axis" transform="translate(16 ' + (margin.top + plotHeight / 2) + ') rotate(-90)" text-anchor="middle">Finishing position</text></svg></div></article></div>';
+  }
+  function renderRoundResults() {
+    const sourceSeason = getSeason(); const archiveRounds = getArchiveRounds(sourceSeason); const round = archiveRounds[state.roundIndex];
+    if (!round) { elements.roundResults.innerHTML = '<p class="no-results">No round is selected.</p>'; return; }
+    const rows = sourceSeason.drivers.map((driver) => ({ name: driver.name, result: driver.results[round.index] || {} }))
+      .filter((entry) => enhResultHasFinish(entry.result) || enhResultHasQualifying(entry.result))
+      .sort((a, b) => (a.result.position || 999) - (b.result.position || 999) || (a.result.qualifyingPosition || 999) - (b.result.qualifyingPosition || 999) || a.name.localeCompare(b.name));
+    const indicators = (result) => (result.pole ? '<span class="result-badge pole-badge">Pole</span>' : '') + (result.fastestLap ? '<span class="result-badge fl-badge">FL</span>' : '');
+    const cards = rows.map((entry) => '<div class="result-row"><span class="result-position">' + position(entry.result.position) + '</span><div class="result-name">' + driverLink(entry.name, 'result-driver-link') + '<span class="result-indicators">' + indicators(entry.result) + '</span></div><span class="result-qualifying">' + position(entry.result.qualifyingPosition) + '<small>Qualifying</small></span><span class="result-points">' + (entry.result.points || '—') + '<span>Points</span></span></div>').join('');
+    elements.roundResults.innerHTML = '<div class="round-results-header"><div><p class="round-label">' + escapeHtml(sourceSeason.name) + ' — Round ' + (state.roundIndex + 1) + ' · ' + escapeHtml(round.race.label || 'Race details unavailable') + '</p><h3>' + escapeHtml(round.race.name || 'TBC') + '</h3></div><p>' + rows.length + ' driver result' + (rows.length === 1 ? '' : 's') + '</p></div><div class="results-list">' + (cards || '<p class="no-results">No classified result recorded.</p>') + '</div>';
+  }
+  function enhExtraTable(scope, title, note, columns, rows, limit) {
+    if (scope === 'allRaceMoves' || scope === 'winnerStartDistribution') return '';
+    const orderedColumns = columns.slice(); const seasonIndex = orderedColumns.findIndex((column) => column.key === 'season');
+    if (seasonIndex >= 0 && seasonIndex !== orderedColumns.length - 1) orderedColumns.push(orderedColumns.splice(seasonIndex, 1)[0]);
+    const sorted = enhExtraSortRows(scope, rows, orderedColumns); const displayed = limit ? sorted.slice(0, limit) : sorted;
+    const sort = state.extraSorts[scope] || { key: orderedColumns[0].key, direction: orderedColumns[0].direction || 'desc' };
+    const header = (column) => '<th><button class="sort-button" type="button" data-extra-sort-scope="' + scope + '" data-extra-sort-key="' + column.key + '" aria-pressed="' + (sort.key === column.key) + '">' + column.label + ' <span class="sort-icon" aria-hidden="true">' + (sort.key === column.key ? (sort.direction === 'asc' ? '↑' : '↓') : '↕') + '</span></button></th>';
+    const cell = (row, column) => column.render ? column.render(row) : escapeHtml(row[column.key] === null || row[column.key] === undefined ? '—' : row[column.key]);
+    return '<section class="record-panel"><div class="panel-title"><div><p class="eyebrow">Series record</p><h3>' + title + '</h3></div><p>' + note + '</p></div><div class="mini-table-shell"><table class="profile-table"><thead><tr>' + orderedColumns.map(header).join('') + '</tr></thead><tbody>' + (displayed.map((row) => '<tr>' + orderedColumns.map((column) => '<td>' + cell(row, column) + '</td>').join('') + '</tr>').join('') || '<tr><td colspan="' + orderedColumns.length + '">No records are available.</td></tr>') + '</tbody></table></div></section>';
+  }
+  function enhWinnerStartChart(winningEntries) {
+    const distribution = [...winningEntries.reduce((map, entry) => map.set(entry.result.qualifyingPosition, (map.get(entry.result.qualifyingPosition) || 0) + 1), new Map()).entries()].sort((a, b) => a[0] - b[0]);
+    if (state.winnerStartFilter === undefined) state.winnerStartFilter = distribution[0]?.[0] || null;
+    const maximum = Math.max(...distribution.map(([, count]) => count), 1);
+    const selected = winningEntries.filter((entry) => entry.result.qualifyingPosition === state.winnerStartFilter);
+    return '<section class="record-panel"><div class="panel-title"><div><p class="eyebrow">Winner analysis</p><h3>Race winner starting-position distribution</h3></div><p>Select a starting position to see every win from that grid spot.</p></div><div class="winner-start-chart">' + distribution.map(([start, wins]) => '<button type="button" data-winner-start="' + start + '" aria-pressed="' + (start === state.winnerStartFilter) + '"><span>P' + start + '</span><i><b style="width:' + (wins / maximum * 100) + '%"></b></i><strong>' + wins + '</strong></button>').join('') + '</div><div class="mini-table-shell"><table class="profile-table"><thead><tr><th>Driver</th><th>Round</th><th>Event</th><th>Finish</th><th>Season</th></tr></thead><tbody>' + selected.map((entry) => '<tr><td>' + driverLink(entry.name, 'record-driver-link') + '</td><td>R' + (entry.roundIndex + 1) + '</td><td>' + escapeHtml(entry.race.name) + '</td><td>P1</td><td>' + escapeHtml(entry.season.name) + '</td></tr>').join('') + '</tbody></table></div></section>';
+  }
+  const renderSpecialRecordsBase = renderSpecialRecords;
+  renderSpecialRecords = function renderSpecialRecordsClean() {
+    renderSpecialRecordsBase();
+    const dotdCard = elements.records.querySelector('.joke-record');
+    dotdCard?.classList.remove('joke-record');
+    dotdCard?.querySelector('p')?.remove();
+  };
   setupEnhancedArchive();
   renderPointsSystem(); renderSeason(); renderProfileSelector(); renderDriverProfile(); renderRecords();
 })();
