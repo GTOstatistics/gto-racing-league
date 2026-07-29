@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="GTO Racing League championship archive and race results." />
     <title>GTO Racing League | Championship Archive</title>
-    <link rel="stylesheet" href="styles.css?v=mobile-layout-3" />
+    <link rel="stylesheet" href="styles.css?v=archive-features-1" />
   </head>
   <body>
     <a class="skip-link" href="#main-content">Skip to content</a>
@@ -21,6 +21,8 @@
         <a href="#records">Records</a>
         <a href="#schedule">Schedule</a>
         <a href="#results">Results</a>
+        <a href="#comparison">Compare</a>
+        <a href="#track-history">Tracks</a>
       </nav>
     </header>
 
@@ -53,6 +55,9 @@
       <section class="section-wrap snapshot" aria-label="Season snapshot">
         <div id="stat-cards" class="stat-cards"></div>
       </section>
+      <section class="section-wrap did-you-know-wrap" aria-label="Did you know">
+        <div id="did-you-know" class="did-you-know" aria-live="polite"></div>
+      </section>
 
       <section id="standings" class="section-wrap section-block" aria-labelledby="standings-title">
         <div class="section-heading">
@@ -84,6 +89,17 @@
           </table>
           <p id="standings-sort-status" class="sr-only" aria-live="polite"></p>
         </div>
+        <section class="standings-progression" aria-labelledby="progression-title">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">Championship race</p>
+              <h3 id="progression-title">Standings progression</h3>
+            </div>
+            <p>Each line shows the championship position after every completed round. P1 is at the top.</p>
+          </div>
+          <div id="progression-controls" class="progression-controls" aria-label="Standings graph controls"></div>
+          <div id="progression-chart" class="progression-chart" aria-live="polite"></div>
+        </section>
       </section>
 
       <section id="car-stats" class="section-wrap section-block car-stats-section" aria-labelledby="car-stats-title">
@@ -126,6 +142,7 @@
             <button type="button" role="tab" class="record-type-tab" data-record-type="qualifying" aria-selected="false">Qualifying</button>
             <button type="button" role="tab" class="record-type-tab" data-record-type="special" aria-selected="false">Other records</button>
             <button type="button" role="tab" class="record-type-tab" data-record-type="lead-percentage" aria-selected="false">Laps led %</button>
+            <button type="button" role="tab" class="record-type-tab" data-record-type="conversion" aria-selected="false">Conversion rates</button>
           </div>
           <div id="record-position-tabs" class="position-tabs" aria-label="Position filter"></div>
         </div>
@@ -158,6 +175,30 @@
         <div id="round-results" class="round-results" aria-live="polite"></div>
       </section>
 
+      <section id="comparison" class="section-wrap section-block comparison-section" aria-labelledby="comparison-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Driver vs. driver</p>
+            <h2 id="comparison-title">Driver comparison</h2>
+          </div>
+          <p class="section-note">Compare career totals or recalculate the matchup inside any individual season.</p>
+        </div>
+        <div id="comparison-controls" class="comparison-controls"></div>
+        <div id="comparison-content" class="comparison-content" aria-live="polite"></div>
+      </section>
+
+      <section id="track-history" class="section-wrap section-block track-history-section" aria-labelledby="track-history-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Circuit archive</p>
+            <h2 id="track-history-title">Track history</h2>
+          </div>
+          <p class="section-note">Every result is connected to the selected circuit and updates automatically as new events are added.</p>
+        </div>
+        <div id="track-history-controls" class="track-history-controls"></div>
+        <div id="track-history-content" class="track-history-content" aria-live="polite"></div>
+      </section>
+
       <section class="section-wrap scoring" aria-labelledby="scoring-title">
         <div class="scoring-intro">
           <p class="eyebrow">Points system</p>
@@ -166,7 +207,8 @@
         </div>
         <div id="points-system" class="points-system" aria-label="Points scoring table"></div>
       </section>
-    </main>
+  </main>
+    <button id="back-to-top" class="back-to-top" type="button" aria-label="Back to top">↑<span>Top</span></button>
 
     <footer class="site-footer">
       <p><strong>GTO Racing League</strong> · Championship Archive</p>
