@@ -221,8 +221,8 @@ tbody tr:hover { background: #fbfcfe; }
   .car-class-leader { padding: 12px 0 0; border-top: 2px solid var(--blue); border-left: 0; }
 }
 @media (max-width: 620px) {
-  .site-header, .site-footer { width: min(100% - 24px, 1200px); }
-  .section-wrap, .hero { width: min(100% - 16px, 1200px); }
+  .site-header, .site-footer { width: min(100% - 16px, 1200px); }
+  .section-wrap, .hero { width: 100%; }
   .site-header { height: 72px; }
   .site-header nav { display: none; }
   .hero { min-height: 500px; padding: 42px 20px; }
@@ -246,11 +246,12 @@ tbody tr:hover { background: #fbfcfe; }
   .profile-hero { padding: 26px; }
   .profile-metrics { grid-template-columns: repeat(3, 1fr); }
   .profile-panel { padding: 18px; }
-  th, td { padding: 12px 10px; }
+  th { padding: 10px 8px; line-height: 1.2; white-space: normal; }
+  td { padding: 11px 8px; }
   td { font-size: 12px; }
-  .standings-table { min-width: 1,060px; }
-  .car-class-table { min-width: 1,080px; }
-  .lead-percentage-table { min-width: 900px; }
+  .standings-table { min-width: 940px; }
+  .car-class-table { min-width: 960px; }
+  .lead-percentage-table { min-width: 820px; }
   .panel-title, .records-header { display: grid; align-items: start; gap: 10px; }
   .panel-title > p, .records-header > p { text-align: left; }
   .records-controls { display: grid; align-items: start; }
