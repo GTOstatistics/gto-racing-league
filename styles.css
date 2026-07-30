@@ -110,13 +110,14 @@ tbody tr:hover { background: #fbfcfe; }
 .round-results-header h3 { margin: 0; font-size: clamp(24px, 3vw, 36px); letter-spacing: -.05em; }
 .round-results-header p { margin: 0; color: #b7bfcb; font-size: 12px; }
 .results-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: #414955; }
-.result-row { display: grid; grid-template-columns: 36px minmax(0, 1fr) 54px auto; align-items: center; gap: 10px; min-height: 63px; padding: 13px 15px; background: #161d27; }
+.result-row { display: grid; grid-template-columns: 36px minmax(0, 1fr) 54px 58px auto; align-items: center; gap: 10px; min-height: 63px; padding: 13px 15px; background: #161d27; }
 .result-position { color: var(--yellow); font-weight: 950; font-style: italic; font-size: 20px; letter-spacing: -.07em; }
 .result-name { font-size: 13px; font-weight: 800; }
 .result-qualifying { color: var(--lime); font-size: 12px; font-weight: 900; text-align: center; }
 .result-qualifying small { display: block; margin-top: 3px; color: #7e8999; font-size: 8px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
-.result-points { color: #cbd2dc; font-size: 11px; font-weight: 800; text-align: right; }
-.result-points span { display: block; margin-top: 3px; color: #7e8999; font-size: 9px; font-weight: 650; }
+.result-laps-led, .result-points { color: #cbd2dc; font-size: 11px; font-weight: 800; text-align: right; }
+.result-laps-led { text-align: center; }
+.result-laps-led span, .result-points span { display: block; margin-top: 3px; color: #7e8999; font-size: 9px; font-weight: 650; }
 .no-results { margin: 0; color: #b7bfcb; }
 
 .scoring { display: grid; grid-template-columns: .9fr 1.2fr; gap: clamp(30px, 8vw, 108px); align-items: center; margin-top: 92px; padding: 58px clamp(26px, 6vw, 70px); background: var(--yellow); }
