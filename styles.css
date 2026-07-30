@@ -417,3 +417,37 @@ tbody tr:hover { background: #fbfcfe; }
   .table-shell > table,
   .mini-table-shell > table { width: max-content; }
 }
+
+/* On phones, let visible archive components use their intrinsic content width
+   without exceeding the available reading width. */
+@media (max-width: 620px) {
+  .did-you-know,
+  .stat-cards,
+  .race-grid,
+  .results-list,
+  .table-shell,
+  .mini-table-shell,
+  .chart-scroll,
+  .standings-progression,
+  .car-class-content,
+  .car-class-header,
+  .profile-hero,
+  .profile-layout,
+  .profile-panel,
+  .round-results,
+  .race-summary,
+  .career-bests,
+  .profile-charts article,
+  .records-header,
+  .record-panel,
+  .special-records,
+  .track-summary,
+  .track-events,
+  .track-event-list,
+  .winner-start-chart,
+  .comparison-key,
+  .scoring { width: fit-content; max-width: 100%; }
+
+  .table-shell > table,
+  .mini-table-shell > table { width: max-content; }
+}
