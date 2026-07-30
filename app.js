@@ -988,7 +988,7 @@
   function setupEnhancedArchive() {
     Object.assign(state, {
       progressionMode: 'all', progressionSelected: new Set(), profileTab: 'overview', profileRaceSeason: null,
-      profileTrackSortKey: 'track', profileTrackSortDirection: 'asc', compareSeason: 'all', extraSorts: {}, didYouKnowIndex: null,
+      profileTrackSortKey: 'track', profileTrackSortDirection: 'asc', compareSeason: 'all', extraSorts: {}, specialRecordFilter: 'all', didYouKnowIndex: null,
       roundSortKey: 'position', roundSortDirection: 'asc'
     });
     Object.assign(elements, {
@@ -1034,6 +1034,10 @@
       if (winnerStart) { state.winnerStartFilter = Number(winnerStart.dataset.winnerStart); renderRecords(); return; }
       const button = event.target.closest('[data-extra-sort-scope]'); if (!button) return; const scope = button.dataset.extraSortScope; const key = button.dataset.extraSortKey; const current = state.extraSorts[scope];
       state.extraSorts[scope] = current && current.key === key ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' } : { key, direction: 'desc' }; renderRecords();
+    });
+    elements.records.addEventListener('change', (event) => {
+      if (!event.target.matches('[data-special-record-filter]')) return;
+      state.specialRecordFilter = event.target.value; renderRecords();
     });
     elements.comparisonControls.addEventListener('change', (event) => {
       if (event.target.matches('[data-comparison-driver="a"]')) state.compareDriverA = event.target.value;
@@ -1107,6 +1111,15 @@
     const dotdCard = elements.records.querySelector('.joke-record');
     dotdCard?.classList.remove('joke-record');
     dotdCard?.querySelector('p')?.remove();
+    const recordItems = [...elements.records.querySelectorAll('.special-record-card, .record-panel')].map((item) => ({
+      item, title: item.querySelector('h3')?.textContent.trim()
+    })).filter((record) => record.title);
+    const titles = [...new Set(recordItems.map((record) => record.title))];
+    if (!titles.includes(state.specialRecordFilter)) state.specialRecordFilter = 'all';
+    recordItems.forEach((record) => { record.item.hidden = state.specialRecordFilter !== 'all' && record.title !== state.specialRecordFilter; });
+    const cardGroup = elements.records.querySelector('.special-records');
+    if (cardGroup) cardGroup.hidden = state.specialRecordFilter !== 'all' && !recordItems.some((record) => record.item.classList.contains('special-record-card') && record.title === state.specialRecordFilter);
+    elements.records.insertAdjacentHTML('afterbegin', '<div class="track-history-controls special-record-filter"><label class="track-picker">Choose record<select data-special-record-filter><option value="all"' + (state.specialRecordFilter === 'all' ? ' selected' : '') + '>All records</option>' + titles.map((title) => '<option value="' + escapeHtml(title) + '"' + (title === state.specialRecordFilter ? ' selected' : '') + '>' + escapeHtml(title) + '</option>').join('') + '</select></label></div>');
   };
   setupEnhancedArchive();
   renderPointsSystem(); renderSeason(); renderProfileSelector(); renderDriverProfile(); renderRecords();
