@@ -68,9 +68,9 @@
     }).slice(0, dropCount).map(({ index }) => index));
     return entries.reduce((total, entry, index) => total + (dropped.has(index) ? 0 : (entry.points || 0)), 0);
   }
-  function calculateStandings(season, { applyChampionshipPointDrops = false } = {}) {
+  function calculateStandings(season, { applyChampionshipPointDrops = false, rounds = getArchiveRounds(season) } = {}) {
     return season.drivers.map((driver) => {
-      const entries = getArchiveRounds(season).map(({ race, index }) => ({ ...driver.results[index], race }));
+      const entries = rounds.map(({ race, index }) => ({ ...driver.results[index], race }));
       const stats = getStats(entries);
       const points = applyChampionshipPointDrops ? getDroppedChampionshipPoints(entries, championshipPointDrops[season.id] || 0) : stats.points;
       return { ...driver, ...stats, points, ...getParticipationLapStats(entries) };
@@ -487,12 +487,8 @@
     const rounds = getArchiveRounds(season).filter(({ index }) => season.drivers.some((driver) => enhResultHasFinish(driver.results[index])));
     const names = season.drivers.map((driver) => driver.name);
     const series = Object.fromEntries(names.map((name) => [name, []]));
-    rounds.forEach(({ index }, roundNumber) => {
-      const rows = season.drivers.map((driver) => {
-        const results = rounds.slice(0, roundNumber + 1).map((round) => driver.results[round.index] || {});
-        return { name: driver.name, ...getStats(results) };
-      }).filter((driver) => driver.completed.length)
-        .sort((a, b) => b.points - a.points || b.wins - a.wins || (a.avgFinish || 999) - (b.avgFinish || 999) || a.name.localeCompare(b.name));
+    rounds.forEach((_, roundNumber) => {
+      const rows = calculateStandings(season, { applyChampionshipPointDrops: true, rounds: rounds.slice(0, roundNumber + 1) });
       const ranking = new Map(rows.map((driver, positionIndex) => [driver.name, positionIndex + 1]));
       names.forEach((name) => series[name].push(ranking.get(name) || null));
     });
@@ -500,7 +496,7 @@
   }
   function enhRenderProgression() {
     const container = elements.progressionChart; const controls = elements.progressionControls; if (!container || !controls) return;
-    const data = enhProgressionData(getSeason()); const finalStandings = calculateStandings(getSeason());
+    const data = enhProgressionData(getSeason()); const finalStandings = calculateStandings(getSeason(), { applyChampionshipPointDrops: true });
     if (!state.progressionMode) state.progressionMode = 'all';
     if (!state.progressionSelected) state.progressionSelected = new Set();
     if (state.progressionMode === 'select' && !state.progressionSelected.size) finalStandings.slice(0, 5).forEach((driver) => state.progressionSelected.add(driver.name));
