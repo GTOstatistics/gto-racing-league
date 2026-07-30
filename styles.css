@@ -389,3 +389,30 @@ tbody tr:hover { background: #fbfcfe; }
   .track-event-list { grid-template-columns: 1fr; }
   .back-to-top { right: 12px; bottom: 12px; width: 44px; height: 44px; }
 }
+
+/* Let archive components end at their content width on larger screens. */
+@media (min-width: 621px) {
+  .did-you-know,
+  .stat-cards,
+  .race-grid,
+  .results-list,
+  .table-shell,
+  .mini-table-shell,
+  .chart-scroll,
+  .standings-progression,
+  .car-class-content,
+  .round-results,
+  .race-summary,
+  .career-bests,
+  .profile-charts article,
+  .record-panel,
+  .special-records,
+  .track-summary,
+  .track-events,
+  .track-event-list,
+  .winner-start-chart,
+  .comparison-key { width: fit-content; max-width: 100%; }
+
+  .table-shell > table,
+  .mini-table-shell > table { width: max-content; }
+}
