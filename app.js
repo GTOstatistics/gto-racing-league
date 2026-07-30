@@ -1124,3 +1124,4 @@
   setupEnhancedArchive();
   renderPointsSystem(); renderSeason(); renderProfileSelector(); renderDriverProfile(); renderRecords();
 })();
+ 
