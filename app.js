@@ -1,6 +1,6 @@
 (() => {
   const { seasons, pointsSystem } = window.GTO_DATA;
-  const state = { seasonIndex: seasons.length - 1, roundIndex: 0, sortKey: 'championshipPosition', sortDirection: 'asc', selectedDriver: null, profileSummarySortKey: 'seasonIndex', profileSummarySortDirection: 'desc', profileH2HSortKey: 'raceMeetings', profileH2HSortDirection: 'desc', profileCarSortKey: 'avgFinish', profileCarSortDirection: 'asc', profileLogSortKey: 'seasonIndex', profileLogSortDirection: 'desc', recordType: 'race', recordPosition: 1, carClass: null, carSortKey: 'points', carSortDirection: 'desc', leadPeriod: 'overall', leadSortKey: 'percentage', leadSortDirection: 'desc' };
+  const state = { seasonIndex: seasons.length - 1, roundIndex: 0, sortKey: 'championshipPosition', sortDirection: 'asc', selectedDriver: null, profileSummarySortKey: 'seasonIndex', profileSummarySortDirection: 'desc', profileH2HSortKey: 'raceMeetings', profileH2HSortDirection: 'desc', profileCarSortKey: 'avgFinish', profileCarSortDirection: 'asc', profileLogSortKey: 'seasonIndex', profileLogSortDirection: 'desc', recordType: 'race', recordPosition: 1, carClass: null, carSortKey: 'points', carSortDirection: 'desc', leadPeriod: 'overall', leadSortKey: 'percentage', leadSortDirection: 'desc', trackSortKey: 'wins', trackSortDirection: 'desc' };
   const elements = {
     tabs: document.querySelector('#season-tabs'), summary: document.querySelector('#season-summary'), statCards: document.querySelector('#stat-cards'),
     standingsHeaders: document.querySelector('#standings-headers'), standings: document.querySelector('#standings-body'), standingsSortStatus: document.querySelector('#standings-sort-status'),
@@ -823,6 +823,20 @@
   function enhTrackRows(track) {
     return enhAllRounds().filter((round) => enhTrackName(round.race) === track);
   }
+  const trackSortDefaults = { driver: 'asc', starts: 'desc', wins: 'desc', podiums: 'desc', poles: 'desc', fastestLaps: 'desc', lapsLed: 'desc', avgFinish: 'asc', avgQualifying: 'asc' };
+  function trackSortHeader(label, key) {
+    const active = state.trackSortKey === key;
+    return '<th><button class="sort-button" type="button" data-track-sort-key="' + key + '" aria-pressed="' + active + '">' + label + ' <span class="sort-icon" aria-hidden="true">' + (active ? (state.trackSortDirection === 'asc' ? '↑' : '↓') : '↕') + '</span></button></th>';
+  }
+  function sortTrackRows(rows) {
+    return rows.slice().sort((a, b) => {
+      const aValue = a[state.trackSortKey]; const bValue = b[state.trackSortKey];
+      if (aValue === null || aValue === undefined) return bValue === null || bValue === undefined ? a.driver.localeCompare(b.driver) : 1;
+      if (bValue === null || bValue === undefined) return -1;
+      const comparison = typeof aValue === 'string' ? aValue.localeCompare(bValue) : aValue - bValue;
+      return comparison * (state.trackSortDirection === 'asc' ? 1 : -1) || a.driver.localeCompare(b.driver);
+    });
+  }
   function renderTrackHistory() {
     if (!elements.trackHistoryControls || !elements.trackHistoryContent) return;
     const tracks = [...new Set(enhAllRounds().map((round) => enhTrackName(round.race)))].sort((a, b) => a.localeCompare(b));
@@ -834,6 +848,7 @@
       const stats = getStats(entries.filter((entry) => entry.name === name).map((entry) => entry.result));
       return { driver: name, ...stats, starts: stats.completed.length };
     }).filter((row) => row.starts).sort((a, b) => b.wins - a.wins || b.podiums - a.podiums || (a.avgFinish || 999) - (b.avgFinish || 999) || a.driver.localeCompare(b.driver));
+    const sortedDriverRows = sortTrackRows(driverRows);
     const winners = rounds.map((round) => round.season.drivers.find((driver) => driver.results[round.roundIndex]?.position === 1)).filter(Boolean);
     const winningStarts = rounds.map((round) => {
       const winner = round.season.drivers.find((driver) => driver.results[round.roundIndex]?.position === 1); return winner?.results[round.roundIndex]?.qualifyingPosition;
@@ -855,7 +870,7 @@
       '</div></section><section class="track-events"><div class="panel-title"><div><p class="eyebrow">Race archive</p><h3>Every GTO race at ' + escapeHtml(state.selectedTrack) + '</h3></div><p>Tap a race to open its complete results.</p></div><div class="track-event-list">' + rounds.map((round) => {
         const winner = round.season.drivers.find((driver) => driver.results[round.roundIndex]?.position === 1);
         return '<button type="button" class="track-event" data-track-season-index="' + round.seasonIndex + '" data-track-round-index="' + getArchiveRounds(round.season).findIndex((item) => item.index === round.roundIndex) + '"><span>' + escapeHtml(round.season.name) + ' · R' + (round.roundIndex + 1) + '</span><strong>' + escapeHtml(round.race.name) + '</strong><small>Winner: ' + (winner ? escapeHtml(winner.name) : 'No result') + '</small></button>';
-      }).join('') + '</div></section><section class="profile-panel"><div class="panel-title"><div><p class="eyebrow">Track standings</p><h3>Driver history at ' + escapeHtml(state.selectedTrack) + '</h3></div><p>Classified results only.</p></div><div class="mini-table-shell"><table class="profile-table"><thead><tr><th>Driver</th><th>Starts</th><th>Wins</th><th>Podiums</th><th>Poles</th><th>Fastest laps</th><th>Laps led</th><th>Avg. finish</th><th>Avg. qualifying</th></tr></thead><tbody>' + driverRows.map((row) => '<tr><td>' + driverLink(row.driver, 'record-driver-link') + '</td><td>' + row.starts + '</td><td>' + (row.wins || '—') + '</td><td>' + (row.podiums || '—') + '</td><td>' + (row.poles || '—') + '</td><td>' + (row.fastestLaps || '—') + '</td><td>' + (row.lapsLed || '—') + '</td><td>' + average(row.avgFinish) + '</td><td>' + average(row.avgQualifying) + '</td></tr>').join('') + '</tbody></table></div></section>';
+      }).join('') + '</div></section><section class="profile-panel"><div class="panel-title"><div><p class="eyebrow">Track standings</p><h3>Driver history at ' + escapeHtml(state.selectedTrack) + '</h3></div><p>Click a column heading to sort. Classified results only.</p></div><div class="mini-table-shell"><table class="profile-table"><thead><tr>' + trackSortHeader('Driver', 'driver') + trackSortHeader('Starts', 'starts') + trackSortHeader('Wins', 'wins') + trackSortHeader('Podiums', 'podiums') + trackSortHeader('Poles', 'poles') + trackSortHeader('Fastest laps', 'fastestLaps') + trackSortHeader('Laps led', 'lapsLed') + trackSortHeader('Avg. finish', 'avgFinish') + trackSortHeader('Avg. qualifying', 'avgQualifying') + '</tr></thead><tbody>' + sortedDriverRows.map((row) => '<tr><td>' + driverLink(row.driver, 'record-driver-link') + '</td><td>' + row.starts + '</td><td>' + (row.wins || '—') + '</td><td>' + (row.podiums || '—') + '</td><td>' + (row.poles || '—') + '</td><td>' + (row.fastestLaps || '—') + '</td><td>' + (row.lapsLed || '—') + '</td><td>' + average(row.avgFinish) + '</td><td>' + average(row.avgQualifying) + '</td></tr>').join('') + '</tbody></table></div></section>';
   }
   function enhFacts() {
     const career = getCareerDrivers(); const second = career.slice().sort((a, b) => b.positionCounts[2] - a.positionCounts[2])[0];
@@ -927,6 +942,8 @@
     });
     elements.trackHistoryControls.addEventListener('change', (event) => { if (event.target.matches('[data-track-select]')) { state.selectedTrack = event.target.value; renderTrackHistory(); } });
     elements.trackHistoryContent.addEventListener('click', (event) => {
+      const sort = event.target.closest('[data-track-sort-key]');
+      if (sort) { const key = sort.dataset.trackSortKey; if (state.trackSortKey === key) state.trackSortDirection = state.trackSortDirection === 'asc' ? 'desc' : 'asc'; else { state.trackSortKey = key; state.trackSortDirection = trackSortDefaults[key]; } renderTrackHistory(); return; }
       const race = event.target.closest('[data-track-season-index]'); if (!race) return;
       state.seasonIndex = Number(race.dataset.trackSeasonIndex); state.roundIndex = Number(race.dataset.trackRoundIndex); renderSeason(); document.querySelector('#results').scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
