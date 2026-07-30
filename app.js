@@ -57,10 +57,23 @@
     };
   }
 
-  function calculateStandings(season) {
+  const championshipPointDrops = { '3': 2, '4': 3 };
+  function getDroppedChampionshipPoints(entries, dropCount) {
+    if (!dropCount) return entries.reduce((total, entry) => total + (entry.points || 0), 0);
+    const dropped = new Set(entries.map((entry, index) => ({ entry, index })).sort((a, b) => {
+      const aMissed = a.entry.position === null || a.entry.position === undefined;
+      const bMissed = b.entry.position === null || b.entry.position === undefined;
+      if (aMissed !== bMissed) return aMissed ? -1 : 1;
+      return (b.entry.position || 0) - (a.entry.position || 0) || (a.entry.points || 0) - (b.entry.points || 0) || a.index - b.index;
+    }).slice(0, dropCount).map(({ index }) => index));
+    return entries.reduce((total, entry, index) => total + (dropped.has(index) ? 0 : (entry.points || 0)), 0);
+  }
+  function calculateStandings(season, { applyChampionshipPointDrops = false } = {}) {
     return season.drivers.map((driver) => {
       const entries = getArchiveRounds(season).map(({ race, index }) => ({ ...driver.results[index], race }));
-      return { ...driver, ...getStats(entries), ...getParticipationLapStats(entries) };
+      const stats = getStats(entries);
+      const points = applyChampionshipPointDrops ? getDroppedChampionshipPoints(entries, championshipPointDrops[season.id] || 0) : stats.points;
+      return { ...driver, ...stats, points, ...getParticipationLapStats(entries) };
     }).filter((driver) => driver.completed.length)
       .sort((a, b) => b.points - a.points || b.wins - a.wins || a.avgFinish - b.avgFinish || a.name.localeCompare(b.name))
       .map((driver, index) => ({ ...driver, championshipPosition: index + 1 }));
@@ -114,7 +127,7 @@
     const sourceSeason = getSeason(); const season = { ...sourceSeason, races: getArchiveRounds(sourceSeason).map(({ race }) => race) }; const leader = standings[0];
     const completedRounds = season.races.filter((_, index) => roundResultRows(season, index).length).length;
     const totalStarts = standings.reduce((total, driver) => total + driver.completed.length, 0);
-    const pointsTotal = standings.reduce((total, driver) => total + driver.points, 0);
+    const pointsTotal = calculateStandings(sourceSeason).reduce((total, driver) => total + driver.points, 0);
     elements.summary.textContent = `${season.races.length} scheduled rounds · ${standings.length} drivers with a start`;
     elements.statCards.innerHTML = `<article class="stat-card highlight"><p>Championship leader</p><strong>${leader ? escapeHtml(leader.name) : '—'}</strong><div class="meta">${leader ? `${number.format(leader.points)} pts · ${leader.wins} win${leader.wins === 1 ? '' : 's'} · ${leader.podiums} podium${leader.podiums === 1 ? '' : 's'}` : 'No recorded results'}</div></article><article class="stat-card"><p>Completed rounds</p><strong>${completedRounds}<span class="zero">/${season.races.length}</span></strong><div class="meta">Season calendar</div></article><article class="stat-card"><p>Drivers listed</p><strong>${standings.length}</strong><div class="meta">Drivers with a recorded start</div></article><article class="stat-card"><p>Recorded starts</p><strong>${totalStarts}</strong><div class="meta">${number.format(pointsTotal)} points awarded</div></article>`;
   }
@@ -349,7 +362,7 @@
   elements.driverProfile.addEventListener('click', (event) => { const button = event.target.closest('[data-profile-log-sort-key]'); if (!button) return; const key = button.dataset.profileLogSortKey; if (state.profileLogSortKey === key) state.profileLogSortDirection = state.profileLogSortDirection === 'asc' ? 'desc' : 'asc'; else { state.profileLogSortKey = key; state.profileLogSortDirection = profileLogSortDefaults[key]; } renderDriverProfile(); });
   elements.carClassTabs.addEventListener('click', (event) => { const tab = event.target.closest('[data-car-class]'); if (tab) { state.carClass = tab.dataset.carClass; renderCarClassStats(); } });
   elements.carClassContent.addEventListener('click', (event) => { const button = event.target.closest('[data-car-sort-key]'); if (!button) return; const key = button.dataset.carSortKey; if (state.carSortKey === key) state.carSortDirection = state.carSortDirection === 'asc' ? 'desc' : 'asc'; else { state.carSortKey = key; state.carSortDirection = sortDefaults[key]; } renderCarClassStats(); });
-  elements.standingsHeaders.addEventListener('click', (event) => { const button = event.target.closest('[data-sort-key]'); if (!button) return; const key = button.dataset.sortKey; if (state.sortKey === key) state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc'; else { state.sortKey = key; state.sortDirection = sortDefaults[key]; } renderStandings(calculateStandings(getSeason())); });
+  elements.standingsHeaders.addEventListener('click', (event) => { const button = event.target.closest('[data-sort-key]'); if (!button) return; const key = button.dataset.sortKey; if (state.sortKey === key) state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc'; else { state.sortKey = key; state.sortDirection = sortDefaults[key]; } renderStandings(calculateStandings(getSeason(), { applyChampionshipPointDrops: true })); });
   elements.recordTypeTabs.addEventListener('click', (event) => { const tab = event.target.closest('[data-record-type]'); if (tab) { state.recordType = tab.dataset.recordType; renderRecords(); } });
   elements.records.addEventListener('click', (event) => { const button = event.target.closest('[data-lead-sort-key]'); if (!button) return; const key = button.dataset.leadSortKey; if (state.leadSortKey === key) state.leadSortDirection = state.leadSortDirection === 'asc' ? 'desc' : 'asc'; else { state.leadSortKey = key; state.leadSortDirection = leadSortDefaults[key]; } renderRecords(); });
   elements.recordPositionTabs.addEventListener('click', (event) => { const tab = event.target.closest('[data-record-position]'); if (tab) { state.recordPosition = Number(tab.dataset.recordPosition); renderRecords(); } });
@@ -890,7 +903,7 @@
     elements.didYouKnow.innerHTML = '<span>Did you know?</span><strong>' + facts[state.didYouKnowIndex] + '</strong><button type="button" data-next-fact aria-label="Show another fact">↻</button>';
   }
   function renderSeason() {
-    const standings = calculateStandings(getSeason()); renderTabs(); renderOverview(standings); renderCarClassStats(); renderStandings(standings); renderSchedule(); renderRoundPicker(); renderRoundResults(); renderComparison(); renderTrackHistory(); renderDidYouKnow();
+    const standings = calculateStandings(getSeason(), { applyChampionshipPointDrops: true }); renderTabs(); renderOverview(standings); renderCarClassStats(); renderStandings(standings); renderSchedule(); renderRoundPicker(); renderRoundResults(); renderComparison(); renderTrackHistory(); renderDidYouKnow();
   }
   function openDriver(name, scroll) {
     const driver = getCareerDriver(name); if (!driver) return;
