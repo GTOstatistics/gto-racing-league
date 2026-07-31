@@ -115,14 +115,14 @@ tbody tr:hover { background: #fbfcfe; }
 .round-results-header h3 { margin: 0; font-size: clamp(24px, 3vw, 36px); letter-spacing: -.05em; }
 .round-results-header p { margin: 0; color: #b7bfcb; font-size: 12px; }
 .results-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: #414955; }
-.result-row { display: grid; grid-template-columns: 36px minmax(0, 1fr) 54px 58px auto; align-items: center; gap: 10px; min-height: 63px; padding: 13px 15px; background: #161d27; }
+.result-row { display: grid; grid-template-columns: 36px minmax(0, 1fr) 54px 58px auto auto; align-items: center; gap: 10px; min-height: 63px; padding: 13px 15px; background: #161d27; }
 .result-position { color: var(--yellow); font-weight: 950; font-style: italic; font-size: 20px; letter-spacing: -.07em; }
 .result-name { font-size: 13px; font-weight: 800; }
 .result-qualifying { color: var(--lime); font-size: 12px; font-weight: 900; text-align: center; }
 .result-qualifying small { display: block; margin-top: 3px; color: #7e8999; font-size: 8px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
-.result-laps-led, .result-points { color: #cbd2dc; font-size: 11px; font-weight: 800; text-align: right; }
+.result-laps-led, .result-points, .result-power-ranking { color: #cbd2dc; font-size: 11px; font-weight: 800; text-align: right; }
 .result-laps-led { text-align: center; }
-.result-laps-led span, .result-points span { display: block; margin-top: 3px; color: #7e8999; font-size: 9px; font-weight: 650; }
+.result-laps-led span, .result-points span, .result-power-ranking span { display: block; margin-top: 3px; color: #7e8999; font-size: 9px; font-weight: 650; }
 .no-results { margin: 0; color: #b7bfcb; }
 
 .scoring { display: grid; grid-template-columns: .9fr 1.2fr; gap: clamp(30px, 8vw, 108px); align-items: center; margin-top: 92px; padding: 58px clamp(26px, 6vw, 70px); background: var(--yellow); }
@@ -273,6 +273,19 @@ tbody tr:hover { background: #fbfcfe; }
 }
 
 /* Dynamic archive tools */
+.power-rankings-content { width: fit-content; max-width: 100%; }
+.power-rankings-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; margin-bottom: 18px; }
+.power-round-picker { margin-left: auto; }
+.power-ranking-panel { padding: 24px; border: 1px solid var(--ink); background: var(--card); box-shadow: var(--shadow); }
+.power-ranking-panel .panel-title { margin-bottom: 18px; }
+.power-ranking-panel .panel-title > p { max-width: 420px; }
+.power-rankings-table { min-width: 980px; }
+.power-overall { color: var(--blue); font-weight: 950; }
+.result-sort-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: -6px 0 18px; }
+.result-sort-controls > span { color: #aeb7c5; font-size: 9px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.result-sort-controls > div { display: flex; flex-wrap: wrap; gap: 5px; }
+.result-sort-controls .sort-button { padding: 7px 8px; border: 1px solid #4c586b; color: #c4ccd7; font-size: 9px; font-weight: 850; }
+.result-sort-controls .sort-button:hover, .result-sort-controls .sort-button:focus-visible, .result-sort-controls .sort-button[aria-pressed="true"] { border-color: var(--lime); color: var(--lime); }
 .did-you-know-wrap { margin-top: 20px; }
 .did-you-know { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 15px 18px; border-left: 4px solid var(--orange); background: #fff4e6; color: var(--ink); }
 .did-you-know > span { color: #9a4a00; font-size: 10px; font-weight: 950; letter-spacing: .1em; text-transform: uppercase; }
@@ -380,6 +393,18 @@ tbody tr:hover { background: #fbfcfe; }
   .track-event-list { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 620px) {
+  .power-rankings-controls { display: grid; align-items: start; }
+  .power-round-picker { margin-left: 0; }
+  .power-ranking-panel { padding: 16px; }
+  .power-rankings-table { min-width: 820px; }
+  .result-sort-controls { display: grid; align-items: start; gap: 7px; }
+  .result-sort-controls > div { gap: 4px; }
+  .result-sort-controls .sort-button { padding: 6px 7px; font-size: 8px; }
+  .result-row { grid-template-columns: 30px minmax(50px, 1fr) 35px 36px 32px 40px; gap: 4px; min-height: 60px; padding: 8px; }
+  .result-position { font-size: 17px; }
+  .result-name, .result-driver-link { font-size: 11px; }
+  .result-qualifying, .result-laps-led, .result-points, .result-power-ranking { font-size: 9px; }
+  .result-qualifying small, .result-laps-led span, .result-points span, .result-power-ranking span { font-size: 7px; }
   .did-you-know { grid-template-columns: 1fr auto; padding: 14px 12px; }
   .did-you-know > span { grid-column: 1 / -1; }
   .standings-progression, .record-panel, .track-events { padding: 16px; }
