@@ -133,6 +133,8 @@ tbody tr:hover { background: #fbfcfe; }
 .point-cell { min-height: 82px; display: grid; align-content: center; padding: 11px; border-right: 1px solid rgba(13,17,24,.4); border-bottom: 1px solid rgba(13,17,24,.4); }
 .point-cell span { color: #635208; font-size: 9px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
 .point-cell strong { margin-top: 3px; font-size: 21px; letter-spacing: -.05em; }
+.point-cell-bonus { background: rgba(255,255,255,.24); }
+.point-cell-bonus small { display: block; margin-top: 5px; color: #51450d; font-size: 9px; font-weight: 650; line-height: 1.35; }
 
 .site-footer { width: min(var(--content-width), calc(100% - 40px)); margin: 0 auto; padding: 31px 0 36px; display: flex; justify-content: space-between; gap: 20px; color: #798392; font-size: 11px; }
 .site-footer p { margin: 0; }
