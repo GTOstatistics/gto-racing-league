@@ -18,7 +18,7 @@
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
     <link rel="manifest" href="site.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=invert-indicator-1" />
+  <link rel="stylesheet" href="styles.css?v=power-rankings-1" />
   </head>
   <body>
     <a class="skip-link" href="#main-content">Skip to content</a>
@@ -29,6 +29,7 @@
       </a>
       <nav aria-label="Section navigation">
         <a href="#standings">Standings</a>
+        <a href="#power-rankings">Power rankings</a>
         <a href="#car-stats">Car stats</a>
         <a href="#comparison">Compare</a>
         <a href="#driver-profile">Drivers</a>
@@ -114,6 +115,17 @@
           <div id="progression-controls" class="progression-controls" aria-label="Standings graph controls"></div>
           <div id="progression-chart" class="progression-chart" aria-live="polite"></div>
         </section>
+      </section>
+
+      <section id="power-rankings" class="section-wrap section-block power-rankings-section" aria-labelledby="power-rankings-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Performance index</p>
+            <h2 id="power-rankings-title">Power rankings</h2>
+          </div>
+          <p class="section-note">Compare each driver’s performance across the selected season or one completed round.</p>
+        </div>
+        <div id="power-rankings-content" class="power-rankings-content" aria-live="polite"></div>
       </section>
 
       <section id="car-stats" class="section-wrap section-block car-stats-section" aria-labelledby="car-stats-title">
@@ -230,6 +242,6 @@
     </footer>
 
     <script src="data.js"></script>
-  <script src="app.js?v=invert-indicator-1"></script>
+  <script src="app.js?v=power-rankings-1"></script>
   </body>
 </html>
