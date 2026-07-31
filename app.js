@@ -1076,21 +1076,24 @@
     const rounds = getArchiveRounds(season);
     const starterCounts = new Map(rounds.map(({ index }) => [index, season.drivers.filter((driver) => enhResultHasFinish(driver.results[index])).length]));
     const rows = season.drivers.map((driver) => {
-      const roundResults = rounds.map(({ index }) => ({ result: driver.results[index] || {}, starterCount: starterCounts.get(index) || 0 }));
+      const roundResults = rounds.map(({ index, race }) => ({ race, result: driver.results[index] || {}, starterCount: starterCounts.get(index) || 0 }));
       const results = roundResults.map(({ result }) => result);
       const finishes = results.filter(enhResultHasFinish).map((result) => result.position);
       const qualifying = results.filter(enhResultHasQualifying).map((result) => result.qualifyingPosition);
       const movement = roundResults.map(({ result, starterCount }) => enhOvertakeDefendScore(result, starterCount)).filter((value) => Number.isFinite(value));
+      const raceLapsAvailable = roundResults.reduce((sum, { race, result }) => sum + (enhResultHasFinish(result) ? (getRoundLaps(race) || 0) : 0), 0);
+      const lapsLed = results.filter(enhResultHasFinish).reduce((sum, result) => sum + (result.lapsLed || 0), 0);
+      const fastestLapRate = finishes.length ? results.filter((result) => result.fastestLap).length / finishes.length * 100 : null;
       return {
         name: driver.name,
         metrics: {
-          finish: powerMean(finishes), finishStarts: finishes.length, qualifying: powerMean(qualifying), fastestLaps: results.filter((result) => result.fastestLap).length,
-          consistency: powerStandardDeviation(finishes), lapsLed: results.reduce((sum, result) => sum + (result.lapsLed || 0), 0), movement: powerMean(movement)
+          finish: powerMean(finishes), finishStarts: finishes.length, qualifying: powerMean(qualifying), fastestLaps: fastestLapRate,
+          consistency: powerStandardDeviation(finishes), lapsLed: raceLapsAvailable ? lapsLed / raceLapsAvailable * 100 : null, movement: powerMean(movement)
         },
         scores: {}
       };
     }).filter((row) => row.metrics.finish !== null && row.metrics.finishStarts >= 3);
-    return finalizePowerRankings(rows, ['finish', 'qualifying', 'fastestLaps', 'consistency', 'lapsLed', 'movement']);
+    return finalizePowerRankings(rows, ['finish', 'qualifying', 'fastestLaps', 'consistency', 'lapsLed', 'movement'], { finish: 0.30, qualifying: 0.15, lapsLed: 0.20, movement: 0.15, consistency: 0.10, fastestLaps: 0.10 });
   }
   function getRacePowerRankings(season, round) {
     if (!round) return [];
@@ -1138,7 +1141,7 @@
     const roundPicker = mode === 'race' ? '<label class="round-picker power-round-picker"><span>Choose round</span><select data-power-round-select>' + rounds.map(({ race }, index) => '<option value="' + index + '"' + (index === state.roundIndex ? ' selected' : '') + '>Round ' + (index + 1) + ' — ' + escapeHtml(race.name || 'TBC') + '</option>').join('') + '</select></label>' : '';
     const heading = mode === 'season' ? escapeHtml(season.name) + ' power rankings' : escapeHtml(season.name) + ' — Round ' + (state.roundIndex + 1) + ' power rankings';
     const note = mode === 'season'
-      ? 'Every category is scaled against this season’s field from 0–100 and weighted equally. Finish, qualifying, and consistency reward lower averages or variation; Overtaking / Defending averages a field-size-adjusted race score that values front-running position retention and gains more highly. Drivers need at least three classified starts to be listed.'
+      ? 'Season Overall weights: Finish 30%, Qualifying 15%, Laps Led 20%, Overtaking / Defending 15%, Consistency 10%, and Fastest Laps 10%. Finish, qualifying, laps-led percentage, fastest-lap rate, and consistency are normalized against eligible drivers. Overtaking / Defending is the average field-size-adjusted race score and remains on its true 0–100 scale. Drivers need at least three classified starts to be listed.'
       : 'Every category is scaled against this race’s field from 0–100. Finish, qualifying, laps led, and Overtaking / Defending are equally weighted; the O/D score values holding or gaining positions near the front more than equivalent backfield movement. Fastest lap is weighted at 35% of a standard category so it does not outweigh full-race performance. Consistency is season-only.';
     const cell = (row, metric) => metric === 'rank' ? String(row.rank).padStart(2, '0') : metric === 'name' ? driverLink(row.name, 'record-driver-link') : powerScore(metric === 'overall' ? row.overall : row.scores[metric]);
     elements.powerRankingsContent.innerHTML = '<div class="power-rankings-controls"><div class="segmented-controls" aria-label="Power rankings view"><button type="button" data-power-rankings-mode="season" aria-pressed="' + (mode === 'season') + '">Season power rankings</button><button type="button" data-power-rankings-mode="race" aria-pressed="' + (mode === 'race') + '">Individual race power rankings</button></div>' + roundPicker + '</div><section class="power-ranking-panel"><div class="panel-title"><div><p class="eyebrow">Performance index</p><h3>' + heading + '</h3></div><p>' + note + '</p></div><div class="table-shell power-rankings-table-shell"><table class="profile-table power-rankings-table"><thead><tr>' + ['rank', 'name', ...metrics].map((metric) => powerSortHeader(metric, mode)).join('') + '</tr></thead><tbody>' + (rows.map((row) => '<tr>' + ['rank', 'name', ...metrics].map((metric) => '<td class="' + (metric === 'overall' ? 'power-overall' : '') + '">' + cell(row, metric) + '</td>').join('') + '</tr>').join('') || '<tr><td colspan="' + (metrics.length + 2) + '">No completed results are available for this view.</td></tr>') + '</tbody></table></div></section>';
