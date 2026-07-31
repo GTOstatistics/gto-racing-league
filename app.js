@@ -1035,7 +1035,7 @@
   }
   const powerMetricLabels = {
     finish: 'Finish', qualifying: 'Qualifying', fastestLaps: 'Fastest laps', consistency: 'Consistency',
-    lapsLed: 'Laps led', movement: 'Overtake / defend', overall: 'Overall', rank: 'Rank', name: 'Driver'
+    lapsLed: 'Laps led', movement: 'Overtaking / Defending', overall: 'Overall', rank: 'Rank', name: 'Driver'
   };
   const powerMetricDirections = { finish: 'low', qualifying: 'low', fastestLaps: 'high', consistency: 'low', lapsLed: 'high', movement: 'high' };
   const powerSortDefaults = { rank: 'asc', name: 'asc', finish: 'desc', qualifying: 'desc', fastestLaps: 'desc', consistency: 'desc', lapsLed: 'desc', movement: 'desc', overall: 'desc' };
@@ -1056,9 +1056,13 @@
       row.scores[metric] = ((direction === 'low' ? maximum - value : value - minimum) / (maximum - minimum)) * 100;
     });
   }
-  function finalizePowerRankings(rows, metrics, weights = {}) {
+  function assignPowerRanks(rows) {
+    rows.slice().sort((a, b) => (b.overall ?? -1) - (a.overall ?? -1) || a.name.localeCompare(b.name)).forEach((row, index) => { row.rank = index + 1; });
+  }
+  function finalizePowerRankings(rows, metrics, weights = {}, directMetrics = ['movement']) {
+    const directMetricSet = new Set(directMetrics);
     metrics.forEach((metric) => {
-      if (metric === 'movement') {
+      if (directMetricSet.has(metric)) {
         rows.forEach((row) => { row.scores[metric] = Number.isFinite(row.metrics[metric]) ? Math.max(0, Math.min(100, row.metrics[metric])) : null; });
         return;
       }
@@ -1069,7 +1073,7 @@
       const totalWeight = scored.reduce((sum, metric) => sum + (weights[metric] ?? 1), 0);
       row.overall = totalWeight ? scored.reduce((sum, metric) => sum + row.scores[metric] * (weights[metric] ?? 1), 0) / totalWeight : null;
     });
-    rows.slice().sort((a, b) => (b.overall ?? -1) - (a.overall ?? -1) || a.name.localeCompare(b.name)).forEach((row, index) => { row.rank = index + 1; });
+    assignPowerRanks(rows);
     return rows;
   }
   function getSeasonPowerRankings(season) {
@@ -1098,18 +1102,26 @@
   function getRacePowerRankings(season, round) {
     if (!round) return [];
     const starterCount = season.drivers.filter((driver) => enhResultHasFinish(driver.results[round.index])).length;
+    const scheduledLaps = getRoundLaps(round.race);
     const rows = season.drivers.map((driver) => {
       const result = driver.results[round.index] || {};
       return {
         name: driver.name,
         metrics: {
           finish: enhResultHasFinish(result) ? result.position : null, qualifying: enhResultHasQualifying(result) ? result.qualifyingPosition : null,
-          fastestLaps: result.fastestLap ? 1 : 0, lapsLed: result.lapsLed || 0, movement: enhOvertakeDefendScore(result, starterCount)
+          fastestLaps: result.fastestLap ? 100 : 0,
+          lapsLed: scheduledLaps ? Math.max(0, Math.min(100, (result.lapsLed || 0) / scheduledLaps * 100)) : null,
+          movement: enhOvertakeDefendScore(result, starterCount)
         },
         scores: {}
       };
     }).filter((row) => row.metrics.finish !== null || row.metrics.qualifying !== null);
-    return finalizePowerRankings(rows, ['finish', 'qualifying', 'fastestLaps', 'lapsLed', 'movement'], { fastestLaps: 0.35 });
+    const rankings = finalizePowerRankings(rows, ['finish', 'qualifying', 'fastestLaps', 'lapsLed', 'movement'], { finish: 0.35, qualifying: 0.20, lapsLed: 0.25, movement: 0.15, fastestLaps: 0.05 }, ['movement', 'lapsLed', 'fastestLaps']);
+    rankings.forEach((row) => {
+      if (['finish', 'qualifying', 'lapsLed', 'movement', 'fastestLaps'].every((metric) => row.scores[metric] === 100)) row.overall = 100;
+    });
+    assignPowerRanks(rankings);
+    return rankings;
   }
   function powerScore(value) { return Number.isFinite(value) ? value.toFixed(1) : '—'; }
   function powerSortHeader(metric, mode) {
@@ -1135,14 +1147,14 @@
     if (!state.powerRankingsMode) state.powerRankingsMode = 'season';
     const mode = state.powerRankingsMode;
     const round = rounds[state.roundIndex];
-    const metrics = mode === 'season' ? ['overall', 'finish', 'qualifying', 'fastestLaps', 'consistency', 'lapsLed', 'movement'] : ['overall', 'finish', 'qualifying', 'fastestLaps', 'lapsLed', 'movement'];
+    const metrics = mode === 'season' ? ['overall', 'finish', 'qualifying', 'fastestLaps', 'consistency', 'lapsLed', 'movement'] : ['overall', 'finish', 'qualifying', 'lapsLed', 'movement', 'fastestLaps'];
     const rankings = mode === 'season' ? getSeasonPowerRankings(season) : getRacePowerRankings(season, round);
     const rows = sortPowerRankings(rankings, mode);
     const roundPicker = mode === 'race' ? '<label class="round-picker power-round-picker"><span>Choose round</span><select data-power-round-select>' + rounds.map(({ race }, index) => '<option value="' + index + '"' + (index === state.roundIndex ? ' selected' : '') + '>Round ' + (index + 1) + ' — ' + escapeHtml(race.name || 'TBC') + '</option>').join('') + '</select></label>' : '';
     const heading = mode === 'season' ? escapeHtml(season.name) + ' power rankings' : escapeHtml(season.name) + ' — Round ' + (state.roundIndex + 1) + ' power rankings';
     const note = mode === 'season'
       ? 'Season Overall weights: Finish 30%, Qualifying 15%, Laps Led 20%, Overtaking / Defending 15%, Consistency 10%, and Fastest Laps 10%. Finish, qualifying, laps-led percentage, fastest-lap rate, and consistency are normalized against eligible drivers. Overtaking / Defending is the average field-size-adjusted race score and remains on its true 0–100 scale. Drivers need at least three classified starts to be listed.'
-      : 'Every category is scaled against this race’s field from 0–100. Finish, qualifying, laps led, and Overtaking / Defending are equally weighted; the O/D score values holding or gaining positions near the front more than equivalent backfield movement. Fastest lap is weighted at 35% of a standard category so it does not outweigh full-race performance. Consistency is season-only.';
+      : 'Individual Race Overall weights: Finish 35%, Qualifying 20%, Laps Led 25%, Overtaking / Defending 15%, and Fastest Lap 5%. Finish and qualifying are normalized against the race field. Laps Led is each driver’s percentage of scheduled race laps; O/D uses the front-weighted 0–100 race score; Fastest Lap is 100.0 or 0.0. A true Grand Slam scores 100.0 overall.';
     const cell = (row, metric) => metric === 'rank' ? String(row.rank).padStart(2, '0') : metric === 'name' ? driverLink(row.name, 'record-driver-link') : powerScore(metric === 'overall' ? row.overall : row.scores[metric]);
     elements.powerRankingsContent.innerHTML = '<div class="power-rankings-controls"><div class="segmented-controls" aria-label="Power rankings view"><button type="button" data-power-rankings-mode="season" aria-pressed="' + (mode === 'season') + '">Season power rankings</button><button type="button" data-power-rankings-mode="race" aria-pressed="' + (mode === 'race') + '">Individual race power rankings</button></div>' + roundPicker + '</div><section class="power-ranking-panel"><div class="panel-title"><div><p class="eyebrow">Performance index</p><h3>' + heading + '</h3></div><p>' + note + '</p></div><div class="table-shell power-rankings-table-shell"><table class="profile-table power-rankings-table"><thead><tr>' + ['rank', 'name', ...metrics].map((metric) => powerSortHeader(metric, mode)).join('') + '</tr></thead><tbody>' + (rows.map((row) => '<tr>' + ['rank', 'name', ...metrics].map((metric) => '<td class="' + (metric === 'overall' ? 'power-overall' : '') + '">' + cell(row, metric) + '</td>').join('') + '</tr>').join('') || '<tr><td colspan="' + (metrics.length + 2) + '">No completed results are available for this view.</td></tr>') + '</tbody></table></div></section>';
   }
