@@ -307,6 +307,7 @@ tbody tr:hover { background: #fbfcfe; }
 .result-badge { display: inline-block; margin: 1px 3px 1px 0; padding: 4px 6px; border-radius: 99px; font-size: 9px; font-weight: 950; letter-spacing: .05em; }
 .pole-badge { background: var(--yellow); color: #4e4000; }
 .fl-badge { background: #dce8ff; color: #1645b6; }
+.invert-badge { background: #e7dfff; color: #4b2389; }
 .dotd-badge { background: #ffe5d8; color: #a33d17; }
 .round-result-note, .profile-filter-note { margin: 11px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
 .career-bests { margin: 1px 0 20px; padding: 20px; border: 1px solid var(--ink); background: #f0f5ff; }
