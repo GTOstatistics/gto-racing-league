@@ -78,6 +78,9 @@
       .sort((a, b) => b.points - a.points || b.wins - a.wins || a.avgFinish - b.avgFinish || a.name.localeCompare(b.name))
       .map((driver, index) => ({ ...driver, championshipPosition: index + 1 }));
   }
+  function getChampionshipFinishingStandings(season) {
+    return calculateStandings(season, { applyChampionshipPointDrops: true });
+  }
 
   function getCareerDrivers() {
     const map = new Map();
@@ -459,7 +462,7 @@
   }
   function enhChampionships(name, seasonFilter) {
     return seasons.filter((season, index) => seasonFilter === 'all' || seasonFilter === undefined || seasonFilter === season.id || seasonFilter === index)
-      .filter((season) => calculateStandings(season)[0]?.name === name).length;
+      .filter((season) => getChampionshipFinishingStandings(season)[0]?.name === name).length;
   }
   function enhCareerBests(name) {
     const entries = enhEntriesForDriver(name).filter((entry) => enhResultHasFinish(entry) || enhResultHasQualifying(entry));
@@ -628,7 +631,7 @@
     const hero = '<article class="profile-hero"><div><p class="eyebrow">Career at a glance</p><h3>' + escapeHtml(driver.name) + '</h3><p>' + driver.seasons.length + ' season' + (driver.seasons.length === 1 ? '' : 's') + ' · ' + driver.completed.length + ' race start' + (driver.completed.length === 1 ? '' : 's') + ' · ' + number.format(driver.points) + ' career points</p></div><div class="profile-metrics"><div><strong>' + driver.wins + '</strong><span>Wins</span></div><div><strong>' + driver.podiums + '</strong><span>Podiums</span></div><div><strong>' + driver.poles + '</strong><span>Poles</span></div><div><strong>' + driver.fastestLaps + '</strong><span>Fastest laps</span></div><div><strong>' + driver.lapsLed + '</strong><span>Laps led</span></div></div></article>' + enhCareerBestsBox(bests) + enhProfileTabs();
     if (state.profileTab === 'tracks') { elements.driverProfile.innerHTML = hero + enhProfileTracks(driver); return; }
     if (state.profileTab === 'charts') { elements.driverProfile.innerHTML = hero + enhProfileChartSvg(driver, enhEntriesWithResult(driver.entries)); return; }
-    const summaryRows = sortProfileSection(driver.seasons.map(({ season, seasonIndex, entries }) => { const stats = getStats(entries); const standing = calculateStandings(season).find((entry) => entry.name === driver.name); return { season, seasonIndex, championshipPosition: standing?.championshipPosition ?? null, starts: stats.completed.length, points: stats.points, wins: stats.wins, podiums: stats.podiums, poles: stats.poles, avgFinish: stats.avgFinish }; }), 'summary');
+    const summaryRows = sortProfileSection(driver.seasons.map(({ season, seasonIndex, entries }) => { const stats = getStats(entries); const standing = getChampionshipFinishingStandings(season).find((entry) => entry.name === driver.name); return { season, seasonIndex, championshipPosition: standing?.championshipPosition ?? null, starts: stats.completed.length, points: stats.points, wins: stats.wins, podiums: stats.podiums, poles: stats.poles, avgFinish: stats.avgFinish }; }), 'summary');
     const carRows = sortProfileSection(getCareerCarClasses().map((carClass) => { const stats = getStats(driver.entries.filter((entry) => getCarClass(entry.race) === carClass)); return { carClass, starts: stats.completed.length, avgFinish: stats.avgFinish, avgQualifying: stats.avgQualifying, wins: stats.wins, podiums: stats.podiums, points: stats.points }; }).filter((row) => row.starts), 'car');
     const races = driver.entries.filter((entry) => enhResultHasFinish(entry) || enhResultHasQualifying(entry)).filter((entry) => state.profileRaceSeason === 'all' || entry.season.id === state.profileRaceSeason);
     const raceRows = sortProfileLogEntries(races).map((entry) => '<tr><td>' + escapeHtml(entry.season.name) + '</td><td>R' + (entry.roundIndex + 1) + '</td><td><button type="button" class="profile-jump-link" data-profile-race-season-index="' + entry.seasonIndex + '" data-profile-race-round-index="' + entry.roundIndex + '">' + escapeHtml(entry.race.name || 'TBC') + '</button><small>' + escapeHtml(entry.race.label || 'Round details unavailable') + '</small></td><td>' + position(entry.position) + '</td><td>' + position(entry.qualifyingPosition) + '</td><td class="' + (enhPositionChange(entry) > 0 ? 'movement-positive' : enhPositionChange(entry) < 0 ? 'movement-negative' : '') + '">' + enhChange(enhPositionChange(entry)) + '</td><td>' + (entry.points || '—') + '</td><td>' + (entry.lapsLed || '—') + '</td><td class="race-log-notes">' + (entry.pole ? '<span>Pole</span>' : '') + (entry.fastestLap ? '<span>Fastest lap</span>' : '') + (!entry.pole && !entry.fastestLap ? '—' : '') + '</td></tr>').join('');
@@ -1124,4 +1127,3 @@
   setupEnhancedArchive();
   renderPointsSystem(); renderSeason(); renderProfileSelector(); renderDriverProfile(); renderRecords();
 })();
- 
