@@ -207,7 +207,7 @@
       return { ...driver, ...getStats(entries), ...getParticipationLapStats(entries) };
     }).filter((driver) => driver.completed.length).sort((a, b) => b.points - a.points || b.wins - a.wins || a.avgFinish - b.avgFinish || a.name.localeCompare(b.name));
     const leader = standings[0]; const sorted = sortCarStandings(standings);
-    const eventList = rounds.map(({ season, race, index }) => `${escapeHtml(season.name)} R${index + 1} - ${escapeHtml(race.name || 'TBC')}`).join(' <span aria-hidden="true">/</span> ');
+    const eventList = rounds.map(({ season, race, index }) => `${escapeHtml(season.name)} R${index + 1} - ${enhCrownJewelName(race)}`).join(' <span aria-hidden="true">/</span> ');
     elements.carClassContent.innerHTML = `<div class="car-class-header"><div><p class="eyebrow">${escapeHtml(state.carClass)} all-time programme</p><h3>${rounds.length} round${rounds.length === 1 ? '' : 's'} in ${escapeHtml(state.carClass)}</h3><p>${eventList}</p></div><div class="car-class-leader"><span>Class leader</span><strong>${leader ? driverLink(leader.name, 'record-driver-link') : '—'}</strong><small>${leader ? `${number.format(leader.points)} pts - ${leader.wins} win${leader.wins === 1 ? '' : 's'}` : 'No classified starts'}</small></div></div><div class="table-shell car-class-table-shell"><table class="car-class-table"><thead><tr><th>Order</th>${carSortHeader('Driver', 'name')}${carSortHeader('Points', 'points')}${carSortHeader('Wins', 'wins')}${carSortHeader('Podiums', 'podiums')}${carSortHeader('Poles', 'poles')}${carSortHeader('Fastest laps', 'fastestLaps')}${carSortHeader('Starts', 'completed')}${carSortHeader('Avg. finish', 'avgFinish')}${carSortHeader('Avg. qualifying', 'avgQualifying')}${carSortHeader('Laps led', 'lapsLed')}${carSortHeader('Laps led %', 'lapsLedPercentage')}</tr></thead><tbody>${sorted.map((driver, index) => `<tr><td class="standing-rank ${index < 3 ? 'top-three' : ''}">${String(index + 1).padStart(2, '0')}</td><td>${driverLink(driver.name, 'record-driver-link')}</td><td class="record-total">${number.format(driver.points)}</td><td>${driver.wins || '—'}</td><td>${driver.podiums || '—'}</td><td>${driver.poles || '—'}</td><td>${driver.fastestLaps || '—'}</td><td>${driver.completed.length}</td><td>${average(driver.avgFinish)}</td><td>${average(driver.avgQualifying)}</td><td>${driver.lapsLed || '—'}</td><td class="lap-led-percent">${driver.lapsLedPercentage === null ? '—' : `${driver.lapsLedPercentage.toFixed(1)}%`}</td></tr>`).join('') || '<tr><td colspan="12">No classified results in this car class.</td></tr>'}</tbody></table></div>`;
   }
   function renderStandings(standings) {
@@ -219,7 +219,7 @@
     const sourceSeason = getSeason(); const season = { ...sourceSeason, races: getArchiveRounds(sourceSeason).map(({ race }) => race) };
     elements.raceCards.innerHTML = season.races.map((race, index) => {
       const winner = roundResultRows(season, index).find((entry) => entry.result.position === 1);
-      return `<article class="race-card"><div class="race-number">Round ${String(index + 1).padStart(2, '0')}<span>${winner ? 'Final' : 'No result'}</span></div><h3>${escapeHtml(race.name || 'TBC')}</h3><p>${escapeHtml(race.label || 'Round details unavailable')}</p><p class="winner">${winner ? `Winner · ${driverLink(winner.name, 'inline-driver-link')}` : 'No classified finish recorded'}</p></article>`;
+      return `<article class="race-card"><div class="race-number">Round ${String(index + 1).padStart(2, '0')}<span>${winner ? 'Final' : 'No result'}</span></div><h3>${enhCrownJewelName(race)}</h3><p>${escapeHtml(race.label || 'Round details unavailable')}</p><p class="winner">${winner ? `Winner · ${driverLink(winner.name, 'inline-driver-link')}` : 'No classified finish recorded'}</p></article>`;
     }).join('');
   }
   function renderRoundPicker() {
@@ -435,6 +435,20 @@
     if (compact === 'daytonarc' || compact === 'daytonaroadcourse') return 'Daytona Road Course';
     if (/n.rburgring/i.test(raw) || /^gr\.?\s*3\s+n/i.test(raw)) return 'Nurburgring';
     return raw || 'TBC';
+  }
+  const enhCrownJewelRaces = new Set(['daytona 50.0', 'hour at lemans', 'blue moon']);
+  function enhIsCrownJewelRace(raceOrName) {
+    const raw = typeof raceOrName === 'string' ? raceOrName : raceOrName?.name;
+    const base = String(raw || '').replace(/\s*\([^)]+\)\s*$/, '').trim().toLowerCase();
+    return enhCrownJewelRaces.has(base);
+  }
+  function enhCrownJewelName(raceOrName) {
+    const raw = typeof raceOrName === 'string' ? raceOrName : raceOrName?.name;
+    const label = escapeHtml(raw || 'TBC');
+    return enhIsCrownJewelRace(raw) ? '<span class="crown-jewel-name" title="Crown Jewel race">' + label + '</span>' : label;
+  }
+  function enhCrownJewelWins(name) {
+    return enhAllEntries().filter((entry) => entry.name === name && entry.result.position === 1 && enhIsCrownJewelRace(entry.race)).length;
   }
   function enhRoundLabel(entry) { return entry.season.name + ' R' + (entry.roundIndex + 1); }
   function enhColor(name) {
@@ -774,6 +788,7 @@
     const seasonDriverRows = (metric) => seasons.flatMap((season) => calculateStandings(season).map((driver) => ({ driver: driver.name, season: season.name, value: metric(driver) }))).filter((row) => row.value);
     const differentWinners = seasons.map((season) => ({ season: season.name, winners: new Set(getArchiveRounds(season).flatMap(({ index }) => season.drivers.filter((driver) => driver.results[index]?.position === 1).map((driver) => driver.name))).size }));
     const allRounds = enhAllRounds();
+    const crownJewelWins = enhAllEntries().filter((entry) => entry.result.position === 1 && enhIsCrownJewelRace(entry.race));
     const perfectWeekends = enhAllEntries().filter((entry) => entry.result.pole && entry.result.position === 1 && entry.result.fastestLap);
     const grandSlams = perfectWeekends.filter((entry) => {
       const raceLaps = getRoundLaps(entry.race);
@@ -792,6 +807,7 @@
       ['Most poles', (driver) => driver.poles, 'poles'], ['Most race starts', (driver) => driver.completed.length, 'starts']
     ].map((record) => '<article class="special-record-card"><h3>' + record[0] + '</h3><ol>' + career.slice().sort((a, b) => record[1](b) - record[1](a) || a.name.localeCompare(b.name)).slice(0, 8).map((driver, index) => '<li><span>' + (index + 1) + '</span>' + driverLink(driver.name, 'record-driver-link') + '<strong>' + record[1](driver) + '</strong></li>').join('') + '</ol><p>' + record[2] + ' across all archived seasons</p></article>').join('') + '<article class="special-record-card joke-record"><h3>Most Driver of the Day (DOTD) Awards</h3><ol><li><span>1</span>' + driverLink('Zay Smitty', 'record-driver-link') + '<strong>' + allRounds.length + '</strong></li></ol><p>Every race ever run in GTO history. This one is intentionally a joke.</p></article></div>';
     elements.records.innerHTML = records +
+      enhExtraTable('crownJewelWins', 'Most Crown Jewel wins', 'Wins in Daytona 50.0, Hour at Le Mans, and Blue Moon.', [{ key: 'driver', label: 'Driver', direction: 'asc', render: enhRecordDriver }, { key: 'total', label: 'Crown Jewel wins', defaultSort: true }], countByDriver(crownJewelWins)) +
       enhExtraTable('racesLed', 'Most races leading at least one lap', 'Career races in which a driver led one or more laps.', [{ key: 'driver', label: 'Driver', direction: 'asc', render: enhRecordDriver }, { key: 'racesLed', label: 'Races led' }, { key: 'starts', label: 'Race starts' }], racesLed) +
       enhExtraTable('movement', 'Career position change', 'Only races with both a qualifying and finishing position are counted.', [{ key: 'driver', label: 'Driver', direction: 'asc', render: enhRecordDriver }, { key: 'gained', label: 'Total gained' }, { key: 'lost', label: 'Total lost' }, { key: 'net', label: 'Net', render: (row) => '<span class="' + (row.net > 0 ? 'movement-positive' : row.net < 0 ? 'movement-negative' : '') + '">' + enhChange(row.net) + '</span>' }], movement) +
       enhExtraTable('sameFinish', 'Most consecutive finishes in the same position', 'Top 10 streaks with a matching classified finishing position.', [{ key: 'driver', label: 'Driver', direction: 'asc', render: enhRecordDriver }, { key: 'position', label: 'Finish', render: (row) => position(row.position) }, { key: 'length', label: 'Streak' }, { key: 'start', label: 'Start', render: (row) => row.start ? enhRoundLabel(row.start) : '—' }, { key: 'end', label: 'End', render: (row) => row.end ? enhRoundLabel(row.end) : '—' }], sameFinish, 10) +
@@ -1389,6 +1405,37 @@
     const cardGroup = elements.records.querySelector('.special-records');
     if (cardGroup) cardGroup.hidden = state.specialRecordFilter !== 'all' && !recordItems.some((record) => record.item.classList.contains('special-record-card') && record.title === state.specialRecordFilter);
     elements.records.insertAdjacentHTML('afterbegin', '<div class="track-history-controls special-record-filter"><label class="track-picker">Choose record<select data-special-record-filter><option value="all"' + (state.specialRecordFilter === 'all' ? ' selected' : '') + '>All records</option>' + titles.map((title) => '<option value="' + escapeHtml(title) + '"' + (title === state.specialRecordFilter ? ' selected' : '') + '>' + escapeHtml(title) + '</option>').join('') + '</select></label></div>');
+  };
+  function enhDecorateCrownJewelNames(container) {
+    container?.querySelectorAll('h3, .profile-jump-link, .track-event strong').forEach((element) => {
+      element.classList.toggle('crown-jewel-name', enhIsCrownJewelRace(element.textContent));
+      if (enhIsCrownJewelRace(element.textContent)) element.title = 'Crown Jewel race';
+    });
+  }
+  const renderScheduleCrownBase = renderSchedule;
+  renderSchedule = function renderScheduleWithCrownJewels() {
+    renderScheduleCrownBase();
+    enhDecorateCrownJewelNames(elements.raceCards);
+  };
+  const renderRoundResultsCrownBase = renderRoundResults;
+  renderRoundResults = function renderRoundResultsWithCrownJewels() {
+    renderRoundResultsCrownBase();
+    enhDecorateCrownJewelNames(elements.roundResults);
+  };
+  const renderTrackHistoryCrownBase = renderTrackHistory;
+  renderTrackHistory = function renderTrackHistoryWithCrownJewels() {
+    renderTrackHistoryCrownBase();
+    enhDecorateCrownJewelNames(elements.trackHistoryContent);
+  };
+  const renderDriverProfileCrownBase = renderDriverProfile;
+  renderDriverProfile = function renderDriverProfileWithCrownJewels() {
+    renderDriverProfileCrownBase();
+    const driver = getCareerDriver(state.selectedDriver);
+    const metrics = elements.driverProfile.querySelector('.profile-metrics');
+    if (driver && metrics && !metrics.querySelector('.crown-jewel-metric')) {
+      metrics.insertAdjacentHTML('beforeend', '<div class="crown-jewel-metric"><strong>' + enhCrownJewelWins(driver.name) + '</strong><span>Crown Jewel wins</span></div>');
+    }
+    enhDecorateCrownJewelNames(elements.driverProfile);
   };
   setupEnhancedArchive();
   renderPointsSystem(); renderSeason(); renderProfileSelector(); renderDriverProfile(); renderRecords();
