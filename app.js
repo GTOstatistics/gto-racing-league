@@ -399,7 +399,7 @@
 
   document.addEventListener('click', (event) => { const button = event.target.closest('[data-driver-name]'); if (button) openDriver(button.dataset.driverName); });
   elements.tabs.addEventListener('click', (event) => { const tab = event.target.closest('[data-season-index]'); if (tab) { state.seasonIndex = Number(tab.dataset.seasonIndex); state.standingsMode = seasonHasPointDrops(getSeason()) ? 'drops' : 'full'; state.roundIndex = 0; renderSeason(); } });
-  elements.roundSelect.addEventListener('change', (event) => { state.roundIndex = Number(event.target.value); renderRoundResults(); });
+  elements.roundSelect.addEventListener('change', (event) => { state.roundIndex = Number(event.target.value); renderRoundResults(); renderPowerRankings(); });
   elements.driverSelect.addEventListener('change', (event) => openDriver(event.target.value, false));
   elements.driverProfile.addEventListener('click', (event) => { const button = event.target.closest('[data-profile-sort-section]'); if (!button) return; const section = button.dataset.profileSortSection; const key = button.dataset.profileSortKey; const [keyName, directionName] = profileSectionStateKeys[section]; if (state[keyName] === key) state[directionName] = state[directionName] === 'asc' ? 'desc' : 'asc'; else { state[keyName] = key; state[directionName] = profileSectionSortDefaults[section][key]; } renderDriverProfile(); });
   elements.driverProfile.addEventListener('click', (event) => { const button = event.target.closest('[data-profile-log-sort-key]'); if (!button) return; const key = button.dataset.profileLogSortKey; if (state.profileLogSortKey === key) state.profileLogSortDirection = state.profileLogSortDirection === 'asc' ? 'desc' : 'asc'; else { state.profileLogSortKey = key; state.profileLogSortDirection = profileLogSortDefaults[key]; } renderDriverProfile(); });
@@ -589,14 +589,14 @@
     });
     renderSortControls(); enhRenderProgression();
   }
-  const enhRoundSortDefaults = { position: 'asc', name: 'asc', flags: 'desc', qualifyingPosition: 'asc', positionChange: 'desc', points: 'desc', lapsLed: 'desc' };
+  const enhRoundSortDefaults = { position: 'asc', name: 'asc', flags: 'desc', qualifyingPosition: 'asc', positionChange: 'desc', points: 'desc', lapsLed: 'desc', powerRanking: 'desc' };
   function enhRoundSortHeader(label, key) {
     const active = state.roundSortKey === key;
     return '<th><button class="sort-button" type="button" data-round-sort-key="' + key + '" aria-pressed="' + active + '">' + label + ' <span class="sort-icon" aria-hidden="true">' + (active ? (state.roundSortDirection === 'asc' ? '↑' : '↓') : '↕') + '</span></button></th>';
   }
-  function enhSortRoundRows(rows) {
+  function enhSortRoundRows(rows, powerRankings) {
     return rows.slice().sort((a, b) => {
-      const value = (row) => state.roundSortKey === 'flags' ? Number(row.result.pole) + Number(row.result.fastestLap) : state.roundSortKey === 'positionChange' ? enhPositionChange(row.result) : state.roundSortKey === 'name' ? row.name : row.result[state.roundSortKey];
+      const value = (row) => state.roundSortKey === 'flags' ? Number(row.result.pole) + Number(row.result.fastestLap) : state.roundSortKey === 'positionChange' ? enhPositionChange(row.result) : state.roundSortKey === 'name' ? row.name : state.roundSortKey === 'powerRanking' ? powerRankings?.get(row.name)?.overall : row.result[state.roundSortKey];
       const aValue = value(a); const bValue = value(b);
       if (aValue === null || aValue === undefined) return bValue === null || bValue === undefined ? a.name.localeCompare(b.name) : 1;
       if (bValue === null || bValue === undefined) return -1;
@@ -1026,9 +1026,106 @@
     state.didYouKnowIndex = nextIndex;
     elements.didYouKnow.innerHTML = '<span>Did you know?</span><strong>' + facts[nextIndex] + '</strong><button type="button" data-next-fact aria-label="Show another fact">↻</button>';
   }
+  const powerMetricLabels = {
+    finish: 'Finish', qualifying: 'Qualifying', fastestLaps: 'Fastest laps', consistency: 'Consistency',
+    lapsLed: 'Laps led', movement: 'Overtake / defend', overall: 'Overall', rank: 'Rank', name: 'Driver'
+  };
+  const powerMetricDirections = { finish: 'low', qualifying: 'low', fastestLaps: 'high', consistency: 'low', lapsLed: 'high', movement: 'high' };
+  const powerSortDefaults = { rank: 'asc', name: 'asc', finish: 'desc', qualifying: 'desc', fastestLaps: 'desc', consistency: 'desc', lapsLed: 'desc', movement: 'desc', overall: 'desc' };
+  const powerMean = (values) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+  const powerStandardDeviation = (values) => {
+    if (values.length < 2) return null;
+    const mean = powerMean(values);
+    return Math.sqrt(values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length);
+  };
+  function normalizePowerMetric(rows, metric, direction, zeroWhenAllZero = false) {
+    const values = rows.map((row) => row.metrics[metric]).filter((value) => Number.isFinite(value));
+    if (!values.length) { rows.forEach((row) => { row.scores[metric] = null; }); return; }
+    const minimum = Math.min(...values); const maximum = Math.max(...values);
+    rows.forEach((row) => {
+      const value = row.metrics[metric];
+      if (!Number.isFinite(value)) { row.scores[metric] = null; return; }
+      if (maximum === minimum) { row.scores[metric] = zeroWhenAllZero && maximum === 0 ? 0 : 100; return; }
+      row.scores[metric] = ((direction === 'low' ? maximum - value : value - minimum) / (maximum - minimum)) * 100;
+    });
+  }
+  function finalizePowerRankings(rows, metrics) {
+    metrics.forEach((metric) => normalizePowerMetric(rows, metric, powerMetricDirections[metric], metric === 'fastestLaps' || metric === 'lapsLed'));
+    rows.forEach((row) => { row.overall = powerMean(metrics.map((metric) => row.scores[metric]).filter((value) => Number.isFinite(value))); });
+    rows.slice().sort((a, b) => (b.overall ?? -1) - (a.overall ?? -1) || a.name.localeCompare(b.name)).forEach((row, index) => { row.rank = index + 1; });
+    return rows;
+  }
+  function getSeasonPowerRankings(season) {
+    const rounds = getArchiveRounds(season);
+    const rows = season.drivers.map((driver) => {
+      const results = rounds.map(({ index }) => driver.results[index] || {});
+      const finishes = results.filter(enhResultHasFinish).map((result) => result.position);
+      const qualifying = results.filter(enhResultHasQualifying).map((result) => result.qualifyingPosition);
+      const movement = results.map(enhPositionChange).filter((value) => Number.isFinite(value));
+      return {
+        name: driver.name,
+        metrics: {
+          finish: powerMean(finishes), qualifying: powerMean(qualifying), fastestLaps: results.filter((result) => result.fastestLap).length,
+          consistency: powerStandardDeviation(finishes), lapsLed: results.reduce((sum, result) => sum + (result.lapsLed || 0), 0), movement: powerMean(movement)
+        },
+        scores: {}
+      };
+    }).filter((row) => row.metrics.finish !== null || row.metrics.qualifying !== null);
+    return finalizePowerRankings(rows, ['finish', 'qualifying', 'fastestLaps', 'consistency', 'lapsLed', 'movement']);
+  }
+  function getRacePowerRankings(season, round) {
+    if (!round) return [];
+    const rows = season.drivers.map((driver) => {
+      const result = driver.results[round.index] || {};
+      return {
+        name: driver.name,
+        metrics: {
+          finish: enhResultHasFinish(result) ? result.position : null, qualifying: enhResultHasQualifying(result) ? result.qualifyingPosition : null,
+          fastestLaps: result.fastestLap ? 1 : 0, lapsLed: result.lapsLed || 0, movement: enhPositionChange(result)
+        },
+        scores: {}
+      };
+    }).filter((row) => row.metrics.finish !== null || row.metrics.qualifying !== null);
+    return finalizePowerRankings(rows, ['finish', 'qualifying', 'fastestLaps', 'lapsLed', 'movement']);
+  }
+  function powerScore(value) { return Number.isFinite(value) ? value.toFixed(1) : '—'; }
+  function powerSortHeader(metric, mode) {
+    const sortKey = mode === 'season' ? state.powerSeasonSortKey : state.powerRaceSortKey;
+    const sortDirection = mode === 'season' ? state.powerSeasonSortDirection : state.powerRaceSortDirection;
+    const active = sortKey === metric;
+    return '<th><button class="sort-button" type="button" data-power-sort-mode="' + mode + '" data-power-sort-key="' + metric + '" aria-pressed="' + active + '">' + powerMetricLabels[metric] + ' <span class="sort-icon" aria-hidden="true">' + (active ? (sortDirection === 'asc' ? '↑' : '↓') : '↕') + '</span></button></th>';
+  }
+  function sortPowerRankings(rows, mode) {
+    const key = mode === 'season' ? state.powerSeasonSortKey : state.powerRaceSortKey;
+    const direction = mode === 'season' ? state.powerSeasonSortDirection : state.powerRaceSortDirection;
+    const value = (row) => key === 'name' ? row.name : key === 'rank' ? row.rank : key === 'overall' ? row.overall : row.scores[key];
+    return rows.slice().sort((a, b) => {
+      const aValue = value(a); const bValue = value(b);
+      if (!Number.isFinite(aValue) && typeof aValue !== 'string') return !Number.isFinite(bValue) && typeof bValue !== 'string' ? a.name.localeCompare(b.name) : 1;
+      if (!Number.isFinite(bValue) && typeof bValue !== 'string') return -1;
+      return (typeof aValue === 'string' ? aValue.localeCompare(bValue) : aValue - bValue) * (direction === 'asc' ? 1 : -1) || a.rank - b.rank || a.name.localeCompare(b.name);
+    });
+  }
+  function renderPowerRankings() {
+    if (!elements.powerRankingsContent) return;
+    const season = getSeason(); const rounds = getArchiveRounds(season);
+    if (!state.powerRankingsMode) state.powerRankingsMode = 'season';
+    const mode = state.powerRankingsMode;
+    const round = rounds[state.roundIndex];
+    const metrics = mode === 'season' ? ['finish', 'qualifying', 'fastestLaps', 'consistency', 'lapsLed', 'movement', 'overall'] : ['finish', 'qualifying', 'fastestLaps', 'lapsLed', 'movement', 'overall'];
+    const rankings = mode === 'season' ? getSeasonPowerRankings(season) : getRacePowerRankings(season, round);
+    const rows = sortPowerRankings(rankings, mode);
+    const roundPicker = mode === 'race' ? '<label class="round-picker power-round-picker"><span>Choose round</span><select data-power-round-select>' + rounds.map(({ race }, index) => '<option value="' + index + '"' + (index === state.roundIndex ? ' selected' : '') + '>Round ' + (index + 1) + ' — ' + escapeHtml(race.name || 'TBC') + '</option>').join('') + '</select></label>' : '';
+    const heading = mode === 'season' ? escapeHtml(season.name) + ' power rankings' : escapeHtml(season.name) + ' — Round ' + (state.roundIndex + 1) + ' power rankings';
+    const note = mode === 'season'
+      ? 'Every category is scaled against this season’s field from 0–100 and weighted equally. Finish, qualifying, and consistency reward lower averages or variation; movement rewards a higher average gain from qualifying. Drivers need two classified finishes for a consistency score.'
+      : 'Every category is scaled against this race’s field from 0–100 and weighted equally. This round uses finish, qualifying, fastest lap, laps led, and qualifying-to-finish movement; consistency is season-only.';
+    const cell = (row, metric) => metric === 'rank' ? String(row.rank).padStart(2, '0') : metric === 'name' ? driverLink(row.name, 'record-driver-link') : powerScore(metric === 'overall' ? row.overall : row.scores[metric]);
+    elements.powerRankingsContent.innerHTML = '<div class="power-rankings-controls"><div class="segmented-controls" aria-label="Power rankings view"><button type="button" data-power-rankings-mode="season" aria-pressed="' + (mode === 'season') + '">Season power rankings</button><button type="button" data-power-rankings-mode="race" aria-pressed="' + (mode === 'race') + '">Individual race power rankings</button></div>' + roundPicker + '</div><section class="power-ranking-panel"><div class="panel-title"><div><p class="eyebrow">Performance index</p><h3>' + heading + '</h3></div><p>' + note + '</p></div><div class="table-shell power-rankings-table-shell"><table class="profile-table power-rankings-table"><thead><tr>' + ['rank', 'name', ...metrics].map((metric) => powerSortHeader(metric, mode)).join('') + '</tr></thead><tbody>' + (rows.map((row) => '<tr>' + ['rank', 'name', ...metrics].map((metric) => '<td class="' + (metric === 'overall' ? 'power-overall' : '') + '">' + cell(row, metric) + '</td>').join('') + '</tr>').join('') || '<tr><td colspan="' + (metrics.length + 2) + '">No completed results are available for this view.</td></tr>') + '</tbody></table></div></section>';
+  }
   function renderSeason() {
     const season = getSeason(); const standings = calculateStandings(season, { applyChampionshipPointDrops: getStandingsUsePointDrops(season), applyChampionshipBonusPoints: true });
-    renderTabs(); renderStandingsViewControls(); renderOverview(standings); renderCarClassStats(); renderStandings(standings); renderSchedule(); renderRoundPicker(); renderRoundResults(); renderComparison(); renderTrackHistory(); renderDidYouKnow();
+    renderTabs(); renderStandingsViewControls(); renderOverview(standings); renderStandings(standings); renderPowerRankings(); renderCarClassStats(); renderSchedule(); renderRoundPicker(); renderRoundResults(); renderComparison(); renderTrackHistory(); renderDidYouKnow();
   }
   function openDriver(name, scroll) {
     const driver = getCareerDriver(name); if (!driver) return;
@@ -1041,13 +1138,15 @@
     Object.assign(state, {
       progressionMode: 'all', progressionSelected: new Set(), profileTab: 'overview', profileRaceSeason: null,
       profileTrackSortKey: 'track', profileTrackSortDirection: 'asc', compareSeason: 'all', extraSorts: {}, specialRecordFilter: 'all', didYouKnowIndex: null,
-      roundSortKey: 'position', roundSortDirection: 'asc', standingsMode: 'drops'
+      roundSortKey: 'position', roundSortDirection: 'asc', standingsMode: 'drops', powerRankingsMode: 'season',
+      powerSeasonSortKey: 'overall', powerSeasonSortDirection: 'desc', powerRaceSortKey: 'overall', powerRaceSortDirection: 'desc'
     });
     Object.assign(elements, {
       progressionControls: document.querySelector('#progression-controls'), progressionChart: document.querySelector('#progression-chart'),
       didYouKnow: document.querySelector('#did-you-know'), comparisonControls: document.querySelector('#comparison-controls'),
       comparisonContent: document.querySelector('#comparison-content'), trackHistoryControls: document.querySelector('#track-history-controls'),
-      trackHistoryContent: document.querySelector('#track-history-content'), backToTop: document.querySelector('#back-to-top')
+      trackHistoryContent: document.querySelector('#track-history-content'), backToTop: document.querySelector('#back-to-top'),
+      powerRankingsContent: document.querySelector('#power-rankings-content')
     });
     elements.progressionControls?.addEventListener('click', (event) => {
       const mode = event.target.closest('[data-progression-mode]'); const driver = event.target.closest('[data-progression-driver]');
@@ -1059,6 +1158,19 @@
       const button = event.target.closest('[data-round-sort-key]'); if (!button) return; const key = button.dataset.roundSortKey;
       if (state.roundSortKey === key) state.roundSortDirection = state.roundSortDirection === 'asc' ? 'desc' : 'asc'; else { state.roundSortKey = key; state.roundSortDirection = enhRoundSortDefaults[key] || 'desc'; }
       renderRoundResults();
+    });
+    elements.powerRankingsContent?.addEventListener('click', (event) => {
+      const view = event.target.closest('[data-power-rankings-mode]'); const sort = event.target.closest('[data-power-sort-key]');
+      if (view) { state.powerRankingsMode = view.dataset.powerRankingsMode; renderPowerRankings(); return; }
+      if (!sort) return;
+      const mode = sort.dataset.powerSortMode; const key = sort.dataset.powerSortKey;
+      const keyName = mode === 'season' ? 'powerSeasonSortKey' : 'powerRaceSortKey'; const directionName = mode === 'season' ? 'powerSeasonSortDirection' : 'powerRaceSortDirection';
+      if (state[keyName] === key) state[directionName] = state[directionName] === 'asc' ? 'desc' : 'asc'; else { state[keyName] = key; state[directionName] = powerSortDefaults[key] || 'desc'; }
+      renderPowerRankings();
+    });
+    elements.powerRankingsContent?.addEventListener('change', (event) => {
+      if (!event.target.matches('[data-power-round-select]')) return;
+      state.roundIndex = Number(event.target.value); renderRoundPicker(); renderRoundResults(); renderPowerRankings();
     });
     elements.driverProfile.addEventListener('change', (event) => {
       if (event.target.matches('[data-profile-race-season]')) { state.profileRaceSeason = event.target.value; renderDriverProfile(); }
@@ -1133,11 +1245,15 @@
     const classifiedRows = sourceSeason.drivers.map((driver) => ({ name: driver.name, result: driver.results[round.index] || {} }))
       .filter((entry) => enhResultHasFinish(entry.result) || enhResultHasQualifying(entry.result))
       .sort((a, b) => (a.result.position || 999) - (b.result.position || 999) || (a.result.qualifyingPosition || 999) - (b.result.qualifyingPosition || 999) || a.name.localeCompare(b.name));
+    const powerByDriver = new Map(getRacePowerRankings(sourceSeason, round).map((driver) => [driver.name, driver]));
+    const sortedRows = enhSortRoundRows(classifiedRows, powerByDriver);
     const hasZayResult = classifiedRows.some((entry) => entry.name === 'Zay Smitty');
-    const rows = hasZayResult ? classifiedRows : classifiedRows.concat({ name: 'Zay Smitty', result: { position: null, qualifyingPosition: null, points: 0, lapsLed: 0, pole: false, fastestLap: false }, dotdOnly: true });
+    const rows = hasZayResult ? sortedRows : sortedRows.concat({ name: 'Zay Smitty', result: { position: null, qualifyingPosition: null, points: 0, lapsLed: 0, pole: false, fastestLap: false }, dotdOnly: true });
     const indicators = (entry) => (entry.result.pole ? '<span class="result-badge pole-badge">Pole</span>' : '') + (entry.result.fastestLap ? '<span class="result-badge fl-badge">FL</span>' : '') + (entry.result.pole && championshipInvertRounds[sourceSeason.id]?.has(round.index) ? '<span class="result-badge invert-badge">(Invert)</span>' : '') + (entry.name === 'Zay Smitty' ? '<span class="result-badge dotd-badge">DOTD</span>' : '');
-    const cards = rows.map((entry) => '<div class="result-row"><span class="result-position">' + position(entry.result.position) + '</span><div class="result-name">' + driverLink(entry.name, 'result-driver-link') + '<span class="result-indicators">' + indicators(entry) + '</span></div><span class="result-qualifying">' + position(entry.result.qualifyingPosition) + '<small>Qualifying</small></span><span class="result-laps-led">' + (entry.result.lapsLed || '—') + '<span>Laps led</span></span><span class="result-points">' + (entry.dotdOnly ? '0' : (entry.result.points ?? '—')) + '<span>Points</span></span></div>').join('');
-    elements.roundResults.innerHTML = '<div class="round-results-header"><div><p class="round-label">' + escapeHtml(sourceSeason.name) + ' — Round ' + (state.roundIndex + 1) + ' · ' + escapeHtml(round.race.label || 'Race details unavailable') + '</p><h3>' + escapeHtml(round.race.name || 'TBC') + '</h3></div><p>' + classifiedRows.length + ' driver result' + (classifiedRows.length === 1 ? '' : 's') + '</p></div><div class="results-list">' + (cards || '<p class="no-results">No classified result recorded.</p>') + '</div>';
+    const sortControl = (label, key) => '<button class="sort-button" type="button" data-round-sort-key="' + key + '" aria-pressed="' + (state.roundSortKey === key) + '">' + label + ' <span class="sort-icon" aria-hidden="true">' + (state.roundSortKey === key ? (state.roundSortDirection === 'asc' ? '↑' : '↓') : '↕') + '</span></button>';
+    const sortControls = '<div class="result-sort-controls" aria-label="Sort race results"><span>Sort results</span><div>' + sortControl('Finish', 'position') + sortControl('Driver', 'name') + sortControl('Qualifying', 'qualifyingPosition') + sortControl('Laps led', 'lapsLed') + sortControl('Points', 'points') + sortControl('Power', 'powerRanking') + '</div></div>';
+    const cards = rows.map((entry) => '<div class="result-row"><span class="result-position">' + position(entry.result.position) + '</span><div class="result-name">' + driverLink(entry.name, 'result-driver-link') + '<span class="result-indicators">' + indicators(entry) + '</span></div><span class="result-qualifying">' + position(entry.result.qualifyingPosition) + '<small>Qualifying</small></span><span class="result-laps-led">' + (entry.result.lapsLed || '—') + '<span>Laps led</span></span><span class="result-points">' + (entry.dotdOnly ? '0' : (entry.result.points ?? '—')) + '<span>Points</span></span><span class="result-power-ranking">' + (entry.dotdOnly ? '—' : powerScore(powerByDriver.get(entry.name)?.overall)) + '<span>Power</span></span></div>').join('');
+    elements.roundResults.innerHTML = '<div class="round-results-header"><div><p class="round-label">' + escapeHtml(sourceSeason.name) + ' — Round ' + (state.roundIndex + 1) + ' · ' + escapeHtml(round.race.label || 'Race details unavailable') + '</p><h3>' + escapeHtml(round.race.name || 'TBC') + '</h3></div><p>' + classifiedRows.length + ' driver result' + (classifiedRows.length === 1 ? '' : 's') + '</p></div>' + sortControls + '<div class="results-list">' + (cards || '<p class="no-results">No classified result recorded.</p>') + '</div>';
   }
   function enhExtraTable(scope, title, note, columns, rows, limit) {
     if (scope === 'allRaceMoves' || scope === 'winnerStartDistribution') return '';
