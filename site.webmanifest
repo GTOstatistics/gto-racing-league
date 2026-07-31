@@ -1,0 +1,22 @@
+{
+  "name": "GTO Racing League",
+  "short_name": "GTO Racing League",
+  "description": "GTO Racing League championship archive and race results.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#070506",
+  "theme_color": "#070506",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
