@@ -471,9 +471,9 @@ tbody tr:hover { background: #fbfcfe; }
   }
 
   .table-shell .sort-button,
-  .mini-table-shell .sort-button { gap: 3px; white-space: normal; }
+  .mini-table-shell .sort-button { display: inline; white-space: normal; }
   .table-shell .sort-icon,
-  .mini-table-shell .sort-icon { width: 8px; font-size: 11px; }
+  .mini-table-shell .sort-icon { display: inline-grid; width: 8px; margin-left: 3px; font-size: 11px; }
   .table-shell .standing-rank,
   .mini-table-shell .standing-rank { width: 44px; }
   .table-shell .record-total,
@@ -492,6 +492,16 @@ tbody tr:hover { background: #fbfcfe; }
   .results-table { min-width: 700px; }
   .comparison-table { min-width: 560px; }
   .chart-scroll svg { min-width: 560px; }
+
+  .table-shell > .standings-table { width: 800px; }
+  .table-shell > .power-rankings-table { width: 700px; }
+  .table-shell > .car-class-table { width: 800px; }
+  .table-shell > .records-table { width: 640px; }
+  .table-shell > .lead-percentage-table { width: 700px; }
+  .table-shell > .results-table { width: 700px; }
+  .table-shell > .comparison-table { width: 560px; }
+  .mini-table-shell > .profile-table { width: 590px; }
+  .mini-table-shell > .race-log { width: 700px; }
 
   .power-ranking-panel { padding: 14px; }
   .round-results { padding: 18px; }
