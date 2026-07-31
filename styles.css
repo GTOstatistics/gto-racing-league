@@ -84,6 +84,11 @@ tbody tr:hover { background: #fbfcfe; }
 .standing-rank { width: 54px; color: #7a828d; font-weight: 900; }
 .standing-rank.top-three { color: var(--blue); }
 .lap-led-percent { color: var(--blue); font-weight: 950; white-space: nowrap; }
+.standings-view-controls { margin: -6px 0 18px; }
+.standings-view-controls[hidden] { display: none; }
+.standings-view-controls .segmented-controls { margin-bottom: 10px; }
+.standings-view-note { max-width: 720px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.standings-bonus-note { max-width: 720px; margin: 8px 0 0; color: #566273; font-size: 11px; line-height: 1.55; }
 .driver-name { font-weight: 850; }
 .points-value { display: flex; align-items: center; gap: 10px; font-weight: 900; }
 .points-track { display: block; width: 68px; height: 4px; background: #e9edf3; }
@@ -418,6 +423,21 @@ tbody tr:hover { background: #fbfcfe; }
   .table-shell > table,
   .mini-table-shell > table { width: max-content; }
 }
+
+/* Tappable links that keep profile tables visually compact. */
+.profile-jump-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 850;
+  text-align: left;
+}
+.profile-jump-link:hover,
+.profile-jump-link:focus-visible { text-decoration: underline; }
+.profile-jump-link:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
 
 /* On phones, let visible archive components use their intrinsic content width
    without exceeding the available reading width. */
