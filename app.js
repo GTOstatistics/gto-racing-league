@@ -1065,12 +1065,12 @@
       return {
         name: driver.name,
         metrics: {
-          finish: powerMean(finishes), qualifying: powerMean(qualifying), fastestLaps: results.filter((result) => result.fastestLap).length,
+          finish: powerMean(finishes), finishStarts: finishes.length, qualifying: powerMean(qualifying), fastestLaps: results.filter((result) => result.fastestLap).length,
           consistency: powerStandardDeviation(finishes), lapsLed: results.reduce((sum, result) => sum + (result.lapsLed || 0), 0), movement: powerMean(movement)
         },
         scores: {}
       };
-    }).filter((row) => row.metrics.finish !== null || row.metrics.qualifying !== null);
+    }).filter((row) => row.metrics.finish !== null && row.metrics.finishStarts >= 3);
     return finalizePowerRankings(rows, ['finish', 'qualifying', 'fastestLaps', 'consistency', 'lapsLed', 'movement']);
   }
   function getRacePowerRankings(season, round) {
@@ -1112,13 +1112,13 @@
     if (!state.powerRankingsMode) state.powerRankingsMode = 'season';
     const mode = state.powerRankingsMode;
     const round = rounds[state.roundIndex];
-    const metrics = mode === 'season' ? ['finish', 'qualifying', 'fastestLaps', 'consistency', 'lapsLed', 'movement', 'overall'] : ['finish', 'qualifying', 'fastestLaps', 'lapsLed', 'movement', 'overall'];
+    const metrics = mode === 'season' ? ['overall', 'finish', 'qualifying', 'fastestLaps', 'consistency', 'lapsLed', 'movement'] : ['overall', 'finish', 'qualifying', 'fastestLaps', 'lapsLed', 'movement'];
     const rankings = mode === 'season' ? getSeasonPowerRankings(season) : getRacePowerRankings(season, round);
     const rows = sortPowerRankings(rankings, mode);
     const roundPicker = mode === 'race' ? '<label class="round-picker power-round-picker"><span>Choose round</span><select data-power-round-select>' + rounds.map(({ race }, index) => '<option value="' + index + '"' + (index === state.roundIndex ? ' selected' : '') + '>Round ' + (index + 1) + ' — ' + escapeHtml(race.name || 'TBC') + '</option>').join('') + '</select></label>' : '';
     const heading = mode === 'season' ? escapeHtml(season.name) + ' power rankings' : escapeHtml(season.name) + ' — Round ' + (state.roundIndex + 1) + ' power rankings';
     const note = mode === 'season'
-      ? 'Every category is scaled against this season’s field from 0–100 and weighted equally. Finish, qualifying, and consistency reward lower averages or variation; movement rewards a higher average gain from qualifying. Drivers need two classified finishes for a consistency score.'
+      ? 'Every category is scaled against this season’s field from 0–100 and weighted equally. Finish, qualifying, and consistency reward lower averages or variation; movement rewards a higher average gain from qualifying. Drivers need at least three classified starts to be listed.'
       : 'Every category is scaled against this race’s field from 0–100 and weighted equally. This round uses finish, qualifying, fastest lap, laps led, and qualifying-to-finish movement; consistency is season-only.';
     const cell = (row, metric) => metric === 'rank' ? String(row.rank).padStart(2, '0') : metric === 'name' ? driverLink(row.name, 'record-driver-link') : powerScore(metric === 'overall' ? row.overall : row.scores[metric]);
     elements.powerRankingsContent.innerHTML = '<div class="power-rankings-controls"><div class="segmented-controls" aria-label="Power rankings view"><button type="button" data-power-rankings-mode="season" aria-pressed="' + (mode === 'season') + '">Season power rankings</button><button type="button" data-power-rankings-mode="race" aria-pressed="' + (mode === 'race') + '">Individual race power rankings</button></div>' + roundPicker + '</div><section class="power-ranking-panel"><div class="panel-title"><div><p class="eyebrow">Performance index</p><h3>' + heading + '</h3></div><p>' + note + '</p></div><div class="table-shell power-rankings-table-shell"><table class="profile-table power-rankings-table"><thead><tr>' + ['rank', 'name', ...metrics].map((metric) => powerSortHeader(metric, mode)).join('') + '</tr></thead><tbody>' + (rows.map((row) => '<tr>' + ['rank', 'name', ...metrics].map((metric) => '<td class="' + (metric === 'overall' ? 'power-overall' : '') + '">' + cell(row, metric) + '</td>').join('') + '</tr>').join('') || '<tr><td colspan="' + (metrics.length + 2) + '">No completed results are available for this view.</td></tr>') + '</tbody></table></div></section>';
