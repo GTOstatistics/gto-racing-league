@@ -156,7 +156,7 @@
       '<button type="button" data-standings-mode="full" aria-pressed="' + (!applyingDrops) + '">Full standings</button>' +
       '<button type="button" data-standings-mode="drops" aria-pressed="' + applyingDrops + '">Standings with points drops</button>' +
       '</div><p class="standings-view-note">' + escapeHtml(season.name) + ' uses ' + drops + ' point drop' + (drops === 1 ? '' : 's') + ': each driver\'s ' + (drops === 1 ? 'lowest-scoring round is' : drops + ' lowest-scoring rounds are') + ' excluded from championship points. A missed race counts as a lowest-scoring round. The dropped round\'s finish, pole, fastest lap, and laps-led statistics still remain in the archive.</p>' +
-      '<p class="standings-bonus-note">Championship bonus points: +1 for fastest lap, +1 for pole position, and +5 invert points for the pole winner when the field is inverted. Season 4 Rounds 9–13 used an inverted field.</p>';
+      '<p class="standings-bonus-note">Championship bonus points: +1 for fastest lap, +1 for pole position, and +5 invert points when the pole winner elects to invert the field. Invert points began in Season 4 and apply only when that option is chosen.</p>';
   }
   function renderOverview(standings) {
     const sourceSeason = getSeason(); const season = { ...sourceSeason, races: getArchiveRounds(sourceSeason).map(({ race }) => race) }; const leader = standings[0];
@@ -385,7 +385,15 @@
     const label = state.recordType === 'race' ? (state.recordPosition === 1 ? 'Most wins' : `Most P${state.recordPosition} finishes`) : (state.recordPosition === 1 ? 'Most poles' : `Most P${state.recordPosition} qualifying results`);
     elements.records.innerHTML = `<div class="records-header"><div><p class="eyebrow">${state.recordType === 'race' ? 'Race finishing positions' : 'Qualifying positions'}</p><h3>${label}</h3></div><p>Every driver is ranked by career ${state.recordType === 'race' ? 'race finishes' : 'qualifying results'} at P${state.recordPosition}.</p></div><div class="table-shell records-table-shell"><table class="records-table"><thead><tr><th>Rank</th><th>Driver</th><th>P${state.recordPosition} total</th><th>Race starts</th><th>Wins</th><th>Poles</th><th>Fastest laps</th><th>Laps led</th></tr></thead><tbody>${ranked.map((driver, index) => `<tr><td class="standing-rank ${index < 3 && count(driver) ? 'top-three' : ''}">${count(driver) ? String(index + 1).padStart(2, '0') : '—'}</td><td>${driverLink(driver.name, 'record-driver-link')}</td><td class="record-total">${count(driver)}</td><td>${driver.completed.length}</td><td>${driver.wins || '—'}</td><td>${driver.poles || '—'}</td><td>${driver.fastestLaps || '—'}</td><td>${driver.lapsLed || '—'}</td></tr>`).join('')}</tbody></table></div>`;
   }
-  function renderPointsSystem() { elements.pointsSystem.innerHTML = Object.entries(pointsSystem).sort(([a], [b]) => Number(a) - Number(b)).map(([place, pointsValue]) => `<div class="point-cell"><span>P${place}</span><strong>${pointsValue}</strong></div>`).join(''); }
+  function renderPointsSystem() {
+    const finishPoints = Object.entries(pointsSystem).sort(([a], [b]) => Number(a) - Number(b)).map(([place, pointsValue]) => `<div class="point-cell"><span>P${place}</span><strong>${pointsValue}</strong></div>`).join('');
+    const bonusPoints = [
+      ['Pole position', '+1', 'One point for earning pole.'],
+      ['Fastest lap', '+1', 'One point for setting fastest lap.'],
+      ['Invert field', '+5', 'Season 4 onward: awarded when the pole winner elects to invert the field.']
+    ].map(([label, points, description]) => `<div class="point-cell point-cell-bonus"><span>${label}</span><strong>${points}</strong><small>${description}</small></div>`).join('');
+    elements.pointsSystem.innerHTML = finishPoints + bonusPoints;
+  }
   function renderSeason() { const standings = calculateStandings(getSeason()); renderTabs(); renderOverview(standings); renderCarClassStats(); renderStandings(standings); renderSchedule(); renderRoundPicker(); renderRoundResults(); }
   function openDriver(name, scroll = true) { if (!getCareerDriver(name)) return; state.selectedDriver = name; renderProfileSelector(); renderDriverProfile(); if (scroll) document.querySelector('#driver-profile').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 
