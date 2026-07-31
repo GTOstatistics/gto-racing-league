@@ -998,7 +998,45 @@
       existing.total += 1; podiumCombos.set(key, existing);
     });
     const commonPodium = [...podiumCombos.values()].sort((a, b) => b.total - a.total || a.drivers.join('|').localeCompare(b.drivers.join('|')))[0];
-    return [
+    const fastestStreak = streakRows.map((row) => ({ ...row, fastest: enhLongestDriverStreak(row.name, (entry) => entry.fastestLap) })).filter((row) => row.fastest.length).sort((a, b) => b.fastest.length - a.fastest.length || a.name.localeCompare(b.name))[0];
+    const ledStreak = streakRows.map((row) => ({ ...row, led: enhLongestDriverStreak(row.name, (entry) => (entry.lapsLed || 0) > 0) })).filter((row) => row.led.length).sort((a, b) => b.led.length - a.led.length || a.name.localeCompare(b.name))[0];
+    const topFiveStreak = streakRows.map((row) => ({ ...row, topFive: enhLongestDriverStreak(row.name, (entry) => entry.position <= 5) })).filter((row) => row.topFive.length).sort((a, b) => b.topFive.length - a.topFive.length || a.name.localeCompare(b.name))[0];
+    const perfectWeekends = allEntries.filter((entry) => entry.result.pole && entry.result.position === 1 && entry.result.fastestLap);
+    const grandSlams = perfectWeekends.filter((entry) => {
+      const lapsInRace = getRoundLaps(entry.race);
+      return lapsInRace && entry.result.lapsLed === lapsInRace;
+    });
+    const perfectWeekendLeader = highest(career.map((driver) => ({ name: driver.name, total: perfectWeekends.filter((entry) => entry.name === driver.name).length })), 'total');
+    const grandSlamLeader = highest(career.map((driver) => ({ name: driver.name, total: grandSlams.filter((entry) => entry.name === driver.name).length })), 'total');
+    const dominantWin = allEntries.filter((entry) => entry.result.position === 1 && getRoundLaps(entry.race) > 0).map((entry) => ({ ...entry, percentage: entry.result.lapsLed / getRoundLaps(entry.race) * 100 })).sort((a, b) => b.percentage - a.percentage || b.result.lapsLed - a.result.lapsLed || a.name.localeCompare(b.name))[0];
+    const bestLapsLedRate = highest(career.map((driver) => {
+      const startsWithLaps = driver.entries.filter((entry) => enhResultHasFinish(entry) && getRoundLaps(entry.race) > 0);
+      const eligibleLaps = startsWithLaps.reduce((sum, entry) => sum + getRoundLaps(entry.race), 0);
+      return { name: driver.name, rate: eligibleLaps ? startsWithLaps.reduce((sum, entry) => sum + (entry.lapsLed || 0), 0) / eligibleLaps * 100 : 0 };
+    }), 'rate');
+    const winsFromPole = highest(career.map((driver) => ({ name: driver.name, total: driver.entries.filter((entry) => entry.position === 1 && entry.pole).length })), 'total');
+    const outsideTopFiveWins = highest(career.map((driver) => ({ name: driver.name, total: driver.entries.filter((entry) => entry.position === 1 && enhResultHasQualifying(entry) && entry.qualifyingPosition > 5).length })), 'total');
+    const positionLeaders = Array.from({ length: 15 }, (_, index) => {
+      const positionNumber = index + 1; const leader = highest(career.map((driver) => ({ name: driver.name, total: driver.positionCounts[positionNumber] || 0 })), 'total');
+      return leader ? { ...leader, position: positionNumber } : null;
+    });
+    const qualifyingLeaders = Array.from({ length: 15 }, (_, index) => {
+      const positionNumber = index + 1; const leader = highest(career.map((driver) => ({ name: driver.name, total: driver.qualifyingCounts[positionNumber] || 0 })), 'total');
+      return leader ? { ...leader, position: positionNumber } : null;
+    });
+    const seasonStats = seasons.flatMap((season) => season.drivers.map((driver) => {
+      const stats = getStats(getArchiveRounds(season).map(({ index }) => driver.results[index] || {}));
+      return { name: driver.name, season: season.name, wins: stats.wins, podiums: stats.podiums, poles: stats.poles, fastestLaps: stats.fastestLaps, lapsLed: stats.lapsLed };
+    }));
+    const seasonPodiums = highest(seasonStats, 'podiums'); const seasonPoles = highest(seasonStats, 'poles'); const seasonFastestLaps = highest(seasonStats, 'fastestLaps'); const seasonLapsLed = highest(seasonStats, 'lapsLed');
+    const championshipLeader = highest(career.map((driver) => ({ name: driver.name, total: seasons.filter((season) => getChampionshipFinishingStandings(season)[0]?.name === driver.name).length })), 'total');
+    const conversionLeaders = [
+      ['poleWin', 'pole-to-win', 'poles'], ['polePodium', 'pole-to-podium', 'poles'], ['top3Win', 'top-three-start-to-win', 'top-three starts'], ['top5Podium', 'top-five-start-to-podium', 'top-five starts'], ['ledWin', 'race-led-to-win', 'races led']
+    ].map(([type, label, opportunityLabel]) => {
+      const leader = enhConversionRows(type).filter((row) => row.opportunities >= 2).sort((a, b) => b.rate - a.rate || b.converted - a.converted || a.driver.localeCompare(b.driver))[0];
+      return leader ? { ...leader, label, opportunityLabel } : null;
+    });
+    const facts = [
       second ? named(second.name) + ' has finished second ' + second.total + ' times — more than any other driver.' : '',
       wins ? named(wins.name) + ' leads the archive with ' + wins.wins + ' wins.' : '',
       podiums ? named(podiums.name) + ' has reached the podium ' + podiums.podiums + ' times.' : '',
@@ -1024,7 +1062,27 @@
       commonFinish ? named(commonFinish.name) + ' has finished P' + commonFinish.position + ' ' + commonFinish.total + ' times — their most common finish.' : '',
       seasonWins ? named(seasonWins.name) + ' won ' + seasonWins.total + ' races in ' + escapeHtml(seasonWins.season) + '.' : '',
       commonPodium ? commonPodium.drivers.map(named).join(', ') + ' have shared the podium ' + commonPodium.total + ' time' + (commonPodium.total === 1 ? '' : 's') + '.' : ''
-    ].filter(Boolean);
+    ];
+    return facts.concat(
+      fastestStreak ? named(fastestStreak.name) + ' owns the longest fastest-lap streak: ' + enhStreakLabel(fastestStreak.fastest) + '.' : '',
+      ledStreak ? named(ledStreak.name) + ' owns the longest streak of races leading a lap: ' + enhStreakLabel(ledStreak.led) + '.' : '',
+      topFiveStreak ? named(topFiveStreak.name) + ' owns the longest top-five streak: ' + enhStreakLabel(topFiveStreak.topFive) + '.' : '',
+      perfectWeekendLeader ? named(perfectWeekendLeader.name) + ' has ' + perfectWeekendLeader.total + ' Perfect Weekend' + (perfectWeekendLeader.total === 1 ? '' : 's') + ' (pole, win, and fastest lap).' : '',
+      grandSlamLeader ? named(grandSlamLeader.name) + ' has ' + grandSlamLeader.total + ' Grand Slam' + (grandSlamLeader.total === 1 ? '' : 's') + ' (pole, win, fastest lap, and every lap led).' : '',
+      dominantWin ? named(dominantWin.name) + ' produced the most dominant win by leading ' + dominantWin.percentage.toFixed(1) + '% of the laps at ' + enhRoundLabel(dominantWin) + '.' : '',
+      bestLapsLedRate ? named(bestLapsLedRate.name) + ' owns the best career laps-led rate at ' + bestLapsLedRate.rate.toFixed(1) + '%.' : '',
+      winsFromPole ? named(winsFromPole.name) + ' has converted pole into ' + winsFromPole.total + ' race win' + (winsFromPole.total === 1 ? '' : 's') + '.' : '',
+      outsideTopFiveWins ? named(outsideTopFiveWins.name) + ' has won ' + outsideTopFiveWins.total + ' time' + (outsideTopFiveWins.total === 1 ? '' : 's') + ' from outside the top five.' : '',
+      seasonPodiums ? named(seasonPodiums.name) + ' recorded ' + seasonPodiums.podiums + ' podiums in ' + escapeHtml(seasonPodiums.season) + ' - the most in one season.' : '',
+      seasonPoles ? named(seasonPoles.name) + ' earned ' + seasonPoles.poles + ' poles in ' + escapeHtml(seasonPoles.season) + ' - the most in one season.' : '',
+      seasonFastestLaps ? named(seasonFastestLaps.name) + ' set ' + seasonFastestLaps.fastestLaps + ' fastest laps in ' + escapeHtml(seasonFastestLaps.season) + ' - the most in one season.' : '',
+      seasonLapsLed ? named(seasonLapsLed.name) + ' led ' + seasonLapsLed.lapsLed + ' laps in ' + escapeHtml(seasonLapsLed.season) + ' - the most in one season.' : '',
+      championshipLeader ? named(championshipLeader.name) + ' has won ' + championshipLeader.total + ' GTO championship' + (championshipLeader.total === 1 ? '' : 's') + '.' : '',
+      ...conversionLeaders.map((leader) => leader ? named(leader.driver) + ' has the best ' + leader.label + ' conversion rate at ' + leader.rate.toFixed(1) + '% (' + leader.converted + ' of ' + leader.opportunities + ' ' + leader.opportunityLabel + ').' : ''),
+      ...positionLeaders.filter((leader) => leader && leader.position > 1).map((leader) => named(leader.name) + ' has the most P' + leader.position + ' finishes with ' + leader.total + '.'),
+      ...qualifyingLeaders.filter((leader) => leader && leader.position > 1).map((leader) => named(leader.name) + ' has the most P' + leader.position + ' qualifying results with ' + leader.total + '.'),
+      allRounds.length ? named('Zay Smitty') + ' has ' + allRounds.length + ' Driver of the Day awards in GTO history.' : ''
+    ).filter(Boolean);
   }
   function renderDidYouKnow() {
     if (!elements.didYouKnow) return; const facts = enhFacts(); if (!facts.length) return;
@@ -1032,6 +1090,10 @@
     if (facts.length > 1 && nextIndex === state.didYouKnowIndex) nextIndex = (nextIndex + 1) % facts.length;
     state.didYouKnowIndex = nextIndex;
     elements.didYouKnow.innerHTML = '<span>Did you know?</span><strong>' + facts[nextIndex] + '</strong><button type="button" data-next-fact aria-label="Show another fact">↻</button>';
+  }
+  function restartDidYouKnowTimer() {
+    if (state.didYouKnowTimer !== null) window.clearInterval(state.didYouKnowTimer);
+    state.didYouKnowTimer = window.setInterval(renderDidYouKnow, 9000);
   }
   const powerMetricLabels = {
     finish: 'Finish', qualifying: 'Qualifying', fastestLaps: 'Fastest laps', consistency: 'Consistency',
@@ -1176,7 +1238,7 @@
   function setupEnhancedArchive() {
     Object.assign(state, {
       progressionMode: 'all', progressionSelected: new Set(), profileTab: 'overview', profileRaceSeason: null,
-      profileTrackSortKey: 'track', profileTrackSortDirection: 'asc', compareSeason: 'all', extraSorts: {}, specialRecordFilter: 'all', didYouKnowIndex: null,
+      profileTrackSortKey: 'track', profileTrackSortDirection: 'asc', compareSeason: 'all', extraSorts: {}, specialRecordFilter: 'all', didYouKnowIndex: null, didYouKnowTimer: null,
       roundSortKey: 'position', roundSortDirection: 'asc', standingsMode: 'drops', powerRankingsMode: 'season',
       powerSeasonSortKey: 'overall', powerSeasonSortDirection: 'desc', powerRaceSortKey: 'overall', powerRaceSortDirection: 'desc'
     });
@@ -1255,14 +1317,14 @@
       const race = event.target.closest('[data-track-season-index]'); if (!race) return;
       state.seasonIndex = Number(race.dataset.trackSeasonIndex); state.roundIndex = Number(race.dataset.trackRoundIndex); renderSeason(); document.querySelector('#results').scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
-    elements.didYouKnow.addEventListener('click', (event) => { if (event.target.closest('[data-next-fact]')) renderDidYouKnow(); });
+    elements.didYouKnow.addEventListener('click', (event) => { if (event.target.closest('[data-next-fact]')) { renderDidYouKnow(); restartDidYouKnowTimer(); } });
     const backButton = elements.backToTop;
     if (backButton) {
       const updateBackButton = () => backButton.classList.toggle('is-visible', window.scrollY > 560);
       window.addEventListener('scroll', updateBackButton, { passive: true }); updateBackButton();
       backButton.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
     }
-    window.setInterval(renderDidYouKnow, 9000);
+    restartDidYouKnowTimer();
   }
   function enhProfileChartSvg(driver, entries) {
     const complete = entries.filter((entry) => enhResultHasFinish(entry)).slice().sort((a, b) => a.seasonIndex - b.seasonIndex || a.roundIndex - b.roundIndex);
