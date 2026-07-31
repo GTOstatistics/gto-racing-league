@@ -420,6 +420,13 @@
   function enhResultHasFinish(result) { return result && result.position !== null && result.position !== undefined; }
   function enhResultHasQualifying(result) { return result && result.qualifyingPosition !== null && result.qualifyingPosition !== undefined; }
   function enhPositionChange(result) { return enhResultHasFinish(result) && enhResultHasQualifying(result) ? result.qualifyingPosition - result.position : null; }
+  function enhOvertakeDefendScore(result, starterCount) {
+    if (!enhResultHasFinish(result) || !enhResultHasQualifying(result) || starterCount < 2) return null;
+    const qualifying = result.qualifyingPosition; const finish = result.position; const denominator = starterCount - 1;
+    if (qualifying === 1 && finish === 1) return 100;
+    const score = 100 * (0.65 * ((starterCount - finish) / denominator) ** 2 + 0.35 * (((starterCount - qualifying) / denominator) + ((qualifying - finish) / denominator)));
+    return Math.max(0, Math.min(100, score));
+  }
   function enhChange(value) { return value === null || value === undefined ? '—' : (value > 0 ? '+' : '') + value; }
   function enhTrackName(race) {
     const raw = String(race.name || 'TBC').replace(/\s*\([^)]+\)\s*$/, '').trim();
@@ -1050,7 +1057,13 @@
     });
   }
   function finalizePowerRankings(rows, metrics, weights = {}) {
-    metrics.forEach((metric) => normalizePowerMetric(rows, metric, powerMetricDirections[metric], metric === 'fastestLaps' || metric === 'lapsLed'));
+    metrics.forEach((metric) => {
+      if (metric === 'movement') {
+        rows.forEach((row) => { row.scores[metric] = Number.isFinite(row.metrics[metric]) ? Math.max(0, Math.min(100, row.metrics[metric])) : null; });
+        return;
+      }
+      normalizePowerMetric(rows, metric, powerMetricDirections[metric], metric === 'fastestLaps' || metric === 'lapsLed');
+    });
     rows.forEach((row) => {
       const scored = metrics.filter((metric) => Number.isFinite(row.scores[metric]));
       const totalWeight = scored.reduce((sum, metric) => sum + (weights[metric] ?? 1), 0);
@@ -1061,11 +1074,13 @@
   }
   function getSeasonPowerRankings(season) {
     const rounds = getArchiveRounds(season);
+    const starterCounts = new Map(rounds.map(({ index }) => [index, season.drivers.filter((driver) => enhResultHasFinish(driver.results[index])).length]));
     const rows = season.drivers.map((driver) => {
-      const results = rounds.map(({ index }) => driver.results[index] || {});
+      const roundResults = rounds.map(({ index }) => ({ result: driver.results[index] || {}, starterCount: starterCounts.get(index) || 0 }));
+      const results = roundResults.map(({ result }) => result);
       const finishes = results.filter(enhResultHasFinish).map((result) => result.position);
       const qualifying = results.filter(enhResultHasQualifying).map((result) => result.qualifyingPosition);
-      const movement = results.map(enhPositionChange).filter((value) => Number.isFinite(value));
+      const movement = roundResults.map(({ result, starterCount }) => enhOvertakeDefendScore(result, starterCount)).filter((value) => Number.isFinite(value));
       return {
         name: driver.name,
         metrics: {
@@ -1079,13 +1094,14 @@
   }
   function getRacePowerRankings(season, round) {
     if (!round) return [];
+    const starterCount = season.drivers.filter((driver) => enhResultHasFinish(driver.results[round.index])).length;
     const rows = season.drivers.map((driver) => {
       const result = driver.results[round.index] || {};
       return {
         name: driver.name,
         metrics: {
           finish: enhResultHasFinish(result) ? result.position : null, qualifying: enhResultHasQualifying(result) ? result.qualifyingPosition : null,
-          fastestLaps: result.fastestLap ? 1 : 0, lapsLed: result.lapsLed || 0, movement: enhPositionChange(result)
+          fastestLaps: result.fastestLap ? 1 : 0, lapsLed: result.lapsLed || 0, movement: enhOvertakeDefendScore(result, starterCount)
         },
         scores: {}
       };
@@ -1122,8 +1138,8 @@
     const roundPicker = mode === 'race' ? '<label class="round-picker power-round-picker"><span>Choose round</span><select data-power-round-select>' + rounds.map(({ race }, index) => '<option value="' + index + '"' + (index === state.roundIndex ? ' selected' : '') + '>Round ' + (index + 1) + ' — ' + escapeHtml(race.name || 'TBC') + '</option>').join('') + '</select></label>' : '';
     const heading = mode === 'season' ? escapeHtml(season.name) + ' power rankings' : escapeHtml(season.name) + ' — Round ' + (state.roundIndex + 1) + ' power rankings';
     const note = mode === 'season'
-      ? 'Every category is scaled against this season’s field from 0–100 and weighted equally. Finish, qualifying, and consistency reward lower averages or variation; movement rewards a higher average gain from qualifying. Drivers need at least three classified starts to be listed.'
-      : 'Every category is scaled against this race’s field from 0–100. Finish, qualifying, laps led, and qualifying-to-finish movement are equally weighted; fastest lap is weighted at 35% of a standard category so it does not outweigh full-race performance. Consistency is season-only.';
+      ? 'Every category is scaled against this season’s field from 0–100 and weighted equally. Finish, qualifying, and consistency reward lower averages or variation; Overtaking / Defending averages a field-size-adjusted race score that values front-running position retention and gains more highly. Drivers need at least three classified starts to be listed.'
+      : 'Every category is scaled against this race’s field from 0–100. Finish, qualifying, laps led, and Overtaking / Defending are equally weighted; the O/D score values holding or gaining positions near the front more than equivalent backfield movement. Fastest lap is weighted at 35% of a standard category so it does not outweigh full-race performance. Consistency is season-only.';
     const cell = (row, metric) => metric === 'rank' ? String(row.rank).padStart(2, '0') : metric === 'name' ? driverLink(row.name, 'record-driver-link') : powerScore(metric === 'overall' ? row.overall : row.scores[metric]);
     elements.powerRankingsContent.innerHTML = '<div class="power-rankings-controls"><div class="segmented-controls" aria-label="Power rankings view"><button type="button" data-power-rankings-mode="season" aria-pressed="' + (mode === 'season') + '">Season power rankings</button><button type="button" data-power-rankings-mode="race" aria-pressed="' + (mode === 'race') + '">Individual race power rankings</button></div>' + roundPicker + '</div><section class="power-ranking-panel"><div class="panel-title"><div><p class="eyebrow">Performance index</p><h3>' + heading + '</h3></div><p>' + note + '</p></div><div class="table-shell power-rankings-table-shell"><table class="profile-table power-rankings-table"><thead><tr>' + ['rank', 'name', ...metrics].map((metric) => powerSortHeader(metric, mode)).join('') + '</tr></thead><tbody>' + (rows.map((row) => '<tr>' + ['rank', 'name', ...metrics].map((metric) => '<td class="' + (metric === 'overall' ? 'power-overall' : '') + '">' + cell(row, metric) + '</td>').join('') + '</tr>').join('') || '<tr><td colspan="' + (metrics.length + 2) + '">No completed results are available for this view.</td></tr>') + '</tbody></table></div></section>';
   }
