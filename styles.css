@@ -452,6 +452,51 @@ tbody tr:hover { background: #fbfcfe; }
   .mini-table-shell > table { width: max-content; }
 }
 
+/* Compact dense data views on phones without changing desktop sizing. */
+@media (max-width: 620px) {
+  .table-shell th,
+  .mini-table-shell th {
+    padding: 8px 6px;
+    font-size: 9px;
+    line-height: 1.15;
+    letter-spacing: .06em;
+    white-space: normal;
+  }
+
+  .table-shell td,
+  .mini-table-shell td {
+    padding: 9px 6px;
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  .table-shell .sort-button,
+  .mini-table-shell .sort-button { gap: 3px; white-space: normal; }
+  .table-shell .sort-icon,
+  .mini-table-shell .sort-icon { width: 8px; font-size: 11px; }
+  .table-shell .standing-rank,
+  .mini-table-shell .standing-rank { width: 44px; }
+  .table-shell .record-total,
+  .mini-table-shell .record-total { font-size: 15px; }
+  .profile-table td small { margin-top: 2px; font-size: 9px; }
+  .race-log-notes span { margin: 1px 2px 1px 0; padding: 2px 4px; font-size: 8px; }
+
+  table { min-width: 680px; }
+  .profile-table { min-width: 590px; }
+  .records-table { min-width: 640px; }
+  .race-log { min-width: 700px; }
+  .standings-table { min-width: 800px; }
+  .power-rankings-table { min-width: 700px; }
+  .car-class-table { min-width: 800px; }
+  .lead-percentage-table { min-width: 700px; }
+  .results-table { min-width: 700px; }
+  .comparison-table { min-width: 560px; }
+  .chart-scroll svg { min-width: 560px; }
+
+  .power-ranking-panel { padding: 14px; }
+  .round-results { padding: 18px; }
+}
+
 /* Tappable links that keep profile tables visually compact. */
 .profile-jump-link {
   padding: 0;
