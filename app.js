@@ -1494,6 +1494,11 @@
     const consistency = finishes.length > 1 ? 1 / (1 + (powerStandardDeviation(finishes) || 0)) : 0.5;
     return {
       starts: completed.length,
+      averageFinish: finishes.length ? predictionMean(finishes) : null,
+      averageQualifying: qualifyingPositions.length ? predictionMean(qualifyingPositions) : null,
+      winsCount: completed.filter((entry) => entry.position === 1).length,
+      podiumsCount: completed.filter((entry) => entry.position <= 3).length,
+      fastestLapsCount: completed.filter((entry) => entry.fastestLap).length,
       finish,
       qualifying: qualifyingScore,
       wins,
@@ -1505,37 +1510,79 @@
       consistency
     };
   }
+  // Career and recent form are broad performance ratings. Event-specific ratings below
+  // deliberately use their own formulas so track and category specialists retain credit.
   function predictionComposite(bundle) {
-    return bundle.finish * 0.21 + bundle.qualifying * 0.12 + bundle.wins * 0.09 + bundle.podiums * 0.08 + bundle.topFive * 0.07 + bundle.lapsLed * 0.08 + bundle.fastestLaps * 0.06 + bundle.movement * 0.09 + bundle.consistency * 0.05;
+    return bundle.finish * 0.26 + bundle.qualifying * 0.14 + bundle.wins * 0.12 + bundle.podiums * 0.10 + bundle.topFive * 0.07 + bundle.lapsLed * 0.10 + bundle.fastestLaps * 0.06 + bundle.movement * 0.08 + bundle.consistency * 0.07;
   }
-  function predictionContextScore(entries, race, fallback, selector) {
-    const contextual = entries.filter(selector);
-    if (!contextual.length) return fallback;
-    const contextScore = predictionComposite(predictionMetricBundle(contextual));
-    const reliability = contextual.length / (contextual.length + 3);
-    return fallback * (1 - reliability) + contextScore * reliability;
+  function predictionTrackScore(bundle) {
+    return bundle.finish * 0.40 + bundle.qualifying * 0.20 + bundle.wins * 0.15 + bundle.podiums * 0.10 + bundle.lapsLed * 0.10 + bundle.fastestLaps * 0.05;
+  }
+  function predictionCarTypeScore(bundle) {
+    return bundle.finish * 0.45 + bundle.qualifying * 0.20 + bundle.wins * 0.15 + bundle.podiums * 0.10 + bundle.lapsLed * 0.05 + bundle.fastestLaps * 0.05;
+  }
+  function predictionHistoryConfidence(starts) {
+    if (starts >= 4) return 1;
+    if (starts === 3) return 0.88;
+    if (starts === 2) return 0.78;
+    if (starts === 1) return 0.65;
+    return 0;
+  }
+  function predictionContextRating(entries, careerScore, selector, scoreFunction) {
+    const matched = entries.filter(selector).filter((entry) => enhResultHasFinish(entry));
+    const bundle = predictionMetricBundle(matched);
+    const confidence = predictionHistoryConfidence(bundle.starts);
+    const matchingScore = scoreFunction(bundle);
+    return {
+      bundle,
+      confidence,
+      matchingScore,
+      score: confidence ? matchingScore * confidence + careerScore * (1 - confidence) : careerScore
+    };
+  }
+  function predictionContextMetric(context, careerBundle, key) {
+    return context.confidence ? context.bundle[key] * context.confidence + careerBundle[key] * (1 - context.confidence) : careerBundle[key];
   }
   function predictionDriverRating(name, race, season, includeCurrentSeason = true) {
     const entries = predictionEntries(name, season, includeCurrentSeason);
-    const all = predictionMetricBundle(entries);
-    const recent = predictionMetricBundle(entries.slice(-8));
-    const base = predictionComposite(all);
-    const track = predictionContextScore(entries, race, base, (entry) => enhTrackName(entry.race) === enhTrackName(race));
-    const carClass = predictionContextScore(entries, race, base, (entry) => getCarClass(entry.race) === getCarClass(race));
-    const currentSeason = predictionMetricBundle(entries.filter((entry) => entry.season.id === season.id));
-    const currentWeight = includeCurrentSeason ? Math.min(0.36, currentSeason.starts * 0.09) : 0;
-    const historical = base * 0.76 + predictionComposite(recent) * 0.12 + track * 0.06 + carClass * 0.06;
-    const rating = (historical * (1 - currentWeight) + predictionComposite(currentSeason) * currentWeight) * 100;
-    return { name, rating: predictionClamp(rating, 5, 95), all, track, carClass, currentStarts: currentSeason.starts };
+    const started = entries.filter((entry) => enhResultHasFinish(entry));
+    const all = predictionMetricBundle(started);
+    const recent = predictionMetricBundle(started.slice(-8));
+    const career = predictionComposite(all);
+    const recentScore = predictionComposite(recent);
+    const track = predictionContextRating(entries, career, (entry) => enhTrackName(entry.race) === enhTrackName(race), predictionTrackScore);
+    const carType = predictionContextRating(entries, career, (entry) => getCarClass(entry.race) === getCarClass(race), predictionCarTypeScore);
+    const rating = (track.score * 0.35 + carType.score * 0.30 + recentScore * 0.20 + career * 0.15) * 100;
+    const qualifyingSkill = predictionContextMetric(track, all, 'qualifying') * 0.35 + predictionContextMetric(carType, all, 'qualifying') * 0.30 + recent.qualifying * 0.20 + all.qualifying * 0.15;
+    const fastestLapSkill = (predictionContextMetric(track, all, 'fastestLaps') * 0.35 + predictionContextMetric(carType, all, 'fastestLaps') * 0.30 + recent.fastestLaps * 0.20 + all.fastestLaps * 0.15) * 0.72 + (predictionContextMetric(track, all, 'lapsLed') * 0.35 + predictionContextMetric(carType, all, 'lapsLed') * 0.30 + recent.lapsLed * 0.20 + all.lapsLed * 0.15) * 0.28;
+    return {
+      name,
+      rating: predictionClamp(rating, 0, 100),
+      all,
+      recent,
+      career,
+      track,
+      carType,
+      trackName: enhTrackName(race),
+      carTypeName: getCarClass(race),
+      qualifyingSkill,
+      fastestLapSkill,
+      contributions: {
+        track: track.score * 35,
+        carType: carType.score * 30,
+        recent: recentScore * 20,
+        career: career * 15
+      }
+    };
   }
   function predictionRaceRows(season, round, includeCurrentSeason = true) {
     const rows = predictionDrivers(season).map((name) => predictionDriverRating(name, round.race, season, includeCurrentSeason));
     const averageRating = predictionMean(rows.map((row) => row.rating), 50);
     return rows.map((row) => ({
       ...row,
-      weight: Math.exp((row.rating - averageRating) / 12),
-      poleWeight: Math.exp((row.all.qualifying - 0.5) * 2.2),
-      fastestLapWeight: Math.exp((row.all.fastestLaps + row.all.lapsLed * 0.35 - 0.2) * 2.1)
+      weight: Math.exp((row.rating - averageRating) / 18),
+      poleWeight: Math.exp((row.rating - averageRating) / 18 + (row.qualifyingSkill - 0.5) * 0.9),
+      fastestLapWeight: Math.exp((row.rating - averageRating) / 18 + (row.fastestLapSkill - 0.24) * 0.9)
     }));
   }
   function predictionHash(value) {
@@ -1553,6 +1600,20 @@
     for (const index of pool) { marker -= rows[index][weightKey]; if (marker <= 0) return index; }
     return pool[pool.length - 1];
   }
+  function predictionNormal(random) {
+    const first = Math.max(random(), Number.EPSILON); const second = random();
+    return Math.sqrt(-2 * Math.log(first)) * Math.cos(2 * Math.PI * second);
+  }
+  function predictionSimulationRows(rows, random) {
+    const sampled = rows.map((row) => ({ ...row, sampledRating: predictionClamp(row.rating + predictionNormal(random) * 4.5, 0, 100) }));
+    const averageRating = predictionMean(sampled.map((row) => row.sampledRating), 50);
+    return sampled.map((row) => ({
+      ...row,
+      weight: Math.exp((row.sampledRating - averageRating) / 18),
+      poleWeight: Math.exp((row.sampledRating - averageRating) / 18 + (row.qualifyingSkill - 0.5) * 0.9 + predictionNormal(random) * 0.12),
+      fastestLapWeight: Math.exp((row.sampledRating - averageRating) / 18 + (row.fastestLapSkill - 0.24) * 0.9 + predictionNormal(random) * 0.12)
+    }));
+  }
   function predictionDrawOrder(rows, random) {
     const pool = rows.map((_, index) => index); const order = [];
     while (pool.length) { const pick = predictionPick(pool, rows, random); order.push(pick); pool.splice(pool.indexOf(pick), 1); }
@@ -1560,15 +1621,18 @@
   }
   function predictionRaceForecast(season, round, includeCurrentSeason = true) {
     const rows = predictionRaceRows(season, round, includeCurrentSeason);
-    const simulations = 7000; const counts = rows.map(() => ({ win: 0, topThree: 0, topFive: 0 }));
+    const simulations = 7000; const counts = rows.map(() => ({ win: 0, topThree: 0, topFive: 0, pole: 0, fastestLap: 0 }));
     const seed = [season.id, round.index, includeCurrentSeason, ...rows.map((row) => row.name + row.rating.toFixed(3))].join('|'); const random = predictionRandom(seed);
     for (let simulation = 0; simulation < simulations; simulation += 1) {
-      const pool = rows.map((_, index) => index);
+      const sampledRows = predictionSimulationRows(rows, random); const pool = sampledRows.map((_, index) => index);
       for (let place = 0; place < Math.min(5, pool.length); place += 1) {
-        const pick = predictionPick(pool, rows, random); counts[pick].win += place === 0 ? 1 : 0; counts[pick].topThree += place < 3 ? 1 : 0; counts[pick].topFive += 1; pool.splice(pool.indexOf(pick), 1);
+        const pick = predictionPick(pool, sampledRows, random); counts[pick].win += place === 0 ? 1 : 0; counts[pick].topThree += place < 3 ? 1 : 0; counts[pick].topFive += 1; pool.splice(pool.indexOf(pick), 1);
       }
+      const all = sampledRows.map((_, index) => index);
+      counts[predictionPick(all, sampledRows, random, 'poleWeight')].pole += 1;
+      counts[predictionPick(all, sampledRows, random, 'fastestLapWeight')].fastestLap += 1;
     }
-    return rows.map((row, index) => ({ ...row, winProbability: counts[index].win / simulations, topThreeProbability: counts[index].topThree / simulations, topFiveProbability: counts[index].topFive / simulations }));
+    return rows.map((row, index) => ({ ...row, winProbability: counts[index].win / simulations, topThreeProbability: counts[index].topThree / simulations, topFiveProbability: counts[index].topFive / simulations, poleProbability: counts[index].pole / simulations, fastestLapProbability: counts[index].fastestLap / simulations }));
   }
   function predictionAmericanOdds(probability) {
     if (!Number.isFinite(probability) || probability <= 0) return '—';
@@ -1602,10 +1666,13 @@
     for (let simulation = 0; simulation < simulations; simulation += 1) {
       const points = { ...starting.points }; const wins = { ...starting.wins };
       forecasts.forEach((rows) => {
-        const order = predictionDrawOrder(rows, random);
+        // Every saved forecast represents this exact track and car category.
+        // Sampling preserves those event-specific strengths in every simulation.
+        const sampledRows = predictionSimulationRows(rows, random);
+        const order = predictionDrawOrder(sampledRows, random);
         order.forEach((rowIndex, positionIndex) => { const name = rows[rowIndex].name; points[name] += pointsSystem[positionIndex + 1] || 0; wins[name] += positionIndex === 0 ? 1 : 0; });
-        points[rows[predictionPick(rows.map((_, index) => index), rows, random, 'poleWeight')].name] += 1;
-        points[rows[predictionPick(rows.map((_, index) => index), rows, random, 'fastestLapWeight')].name] += 1;
+        points[sampledRows[predictionPick(sampledRows.map((_, index) => index), sampledRows, random, 'poleWeight')].name] += 1;
+        points[sampledRows[predictionPick(sampledRows.map((_, index) => index), sampledRows, random, 'fastestLapWeight')].name] += 1;
       });
       const order = names.slice().sort((a, b) => points[b] - points[a] || wins[b] - wins[a] || a.localeCompare(b));
       order.forEach((name, index) => { const target = totals[names.indexOf(name)]; target.championship += index === 0 ? 1 : 0; target.topThree += index < 3 ? 1 : 0; target.topFive += index < 5 ? 1 : 0; });
@@ -1617,7 +1684,7 @@
       return { name, currentPoints: starting.points[name], preseasonRating: predictionMean(ratingValues) * 100 / 100, championshipProbability: tally.championship / simulations, topThreeProbability: tally.topThree / simulations, topFiveProbability: tally.topFive / simulations };
     });
   }
-  const predictionSortDefaults = { championship: 'desc', currentPoints: 'desc', preseasonRating: 'desc', rating: 'desc', winProbability: 'desc', topThreeProbability: 'desc', topFiveProbability: 'desc', name: 'asc' };
+  const predictionSortDefaults = { championship: 'desc', currentPoints: 'desc', preseasonRating: 'desc', rating: 'desc', winProbability: 'desc', topThreeProbability: 'desc', topFiveProbability: 'desc', poleProbability: 'desc', fastestLapProbability: 'desc', name: 'asc' };
   function predictionSortRows(rows) {
     const key = state.predictionSortKey; const direction = state.predictionSortDirection;
     return rows.slice().sort((a, b) => {
@@ -1629,6 +1696,16 @@
     const active = state.predictionSortKey === key;
     return '<th><button class="sort-button" type="button" data-prediction-sort-key="' + key + '" aria-pressed="' + active + '">' + label + ' <span class="sort-icon" aria-hidden="true">' + (active ? (state.predictionSortDirection === 'asc' ? '↑' : '↓') : '↕') + '</span></button></th>';
   }
+  function predictionAveragePosition(value) { return Number.isFinite(value) ? value.toFixed(2) : '—'; }
+  function predictionRatingDetails(row) {
+    const track = row.track.bundle; const carType = row.carType.bundle; const recent = row.recent;
+    return '<details class="prediction-explanation"><summary>Why this rating</summary><div class="prediction-explanation-copy">'
+      + '<p><strong>Track (' + escapeHtml(row.trackName) + '):</strong> ' + track.starts + ' starts · avg finish ' + predictionAveragePosition(track.averageFinish) + ' · avg qualify ' + predictionAveragePosition(track.averageQualifying) + ' · ' + track.winsCount + ' wins, ' + track.podiumsCount + ' podiums</p>'
+      + '<p><strong>Car type (' + escapeHtml(row.carTypeName) + '):</strong> ' + carType.starts + ' starts · avg finish ' + predictionAveragePosition(carType.averageFinish) + ' · avg qualify ' + predictionAveragePosition(carType.averageQualifying) + ' · ' + carType.winsCount + ' wins, ' + carType.podiumsCount + ' podiums</p>'
+      + '<p><strong>Recent form:</strong> ' + recent.starts + ' starts · avg finish ' + predictionAveragePosition(recent.averageFinish) + '</p>'
+      + '<p><strong>Rating contributions:</strong> Track ' + row.contributions.track.toFixed(1) + ' · Car type ' + row.contributions.carType.toFixed(1) + ' · Recent ' + row.contributions.recent.toFixed(1) + ' · Career ' + row.contributions.career.toFixed(1) + '</p>'
+      + '<p><strong>Final event-specific rating:</strong> ' + row.rating.toFixed(1) + '</p></div></details>';
+  }
   function renderPredictions() {
     if (!elements.predictionsContent) return;
     const season = getSeason(); const predictionSeasonData = predictionSeason();
@@ -1638,7 +1715,7 @@
     if (state.predictionRoundIndex < 0) state.predictionRoundIndex = 0;
     const mode = state.predictionMode || 'championship';
     const controls = '<div class="prediction-controls"><div class="segmented-controls" aria-label="Prediction view"><button type="button" data-prediction-mode="championship" aria-pressed="' + (mode === 'championship') + '">Championship predictions</button><button type="button" data-prediction-mode="race" aria-pressed="' + (mode === 'race') + '">Race predictions</button></div>' + (mode === 'race' ? '<label class="round-picker prediction-round-picker"><span>Choose round</span><select data-prediction-round-select>' + rounds.map((round, index) => '<option value="' + index + '"' + (index === state.predictionRoundIndex ? ' selected' : '') + '>Round ' + (index + 1) + ' — ' + escapeHtml(round.race.name || 'TBC') + (predictionCompletedRound(season, round) ? ' (complete)' : '') + '</option>').join('') + '</select></label>' : '') + '</div>';
-    const retired = '<p class="prediction-disclaimer">Model estimates use finishes, qualifying, wins, podiums, top fives, fastest laps, laps-led rate, consistency, overtaking/defending, recent form, and track/car-class history. Trevor Levine, Nick Collier, and YattMan are excluded. American odds are model-style displays, not betting lines.</p>';
+    const retired = '<p class="prediction-disclaimer">Event ratings use track history (35%), car-type history (30%), recent form from the last eight starts (20%), and career performance (15%). Track and car history use the stated sample-size confidence levels. Trevor Levine, Nick Collier, and YattMan are excluded. American odds are model-style displays, not betting lines.</p>';
     if (mode === 'race') {
       const round = rounds[state.predictionRoundIndex];
       if (predictionCompletedRound(season, round)) {
@@ -1646,12 +1723,12 @@
         return;
       }
       const rows = predictionSortRows(predictionRaceForecast(season, round));
-      elements.predictionsContent.innerHTML = controls + '<section class="prediction-panel"><div class="panel-title"><div><p class="eyebrow">Race forecast</p><h3>' + escapeHtml(season.name) + ' — ' + predictionRoundNumber(round) + ' · ' + escapeHtml(round.race.name) + '</h3></div><p>Each probability is based on 7,000 field simulations with the current recorded Season 5 form included.</p></div><div class="table-shell prediction-table-shell"><table class="profile-table prediction-table"><thead><tr>' + predictionHeader('Driver', 'name') + predictionHeader('Model rating', 'rating') + predictionHeader('Win %', 'winProbability') + '<th>Win odds</th>' + predictionHeader('Top 3 %', 'topThreeProbability') + '<th>Top 3 odds</th>' + predictionHeader('Top 5 %', 'topFiveProbability') + '<th>Top 5 odds</th></tr></thead><tbody>' + rows.map((row) => '<tr><td>' + driverLink(row.name, 'record-driver-link') + '</td><td class="prediction-rating">' + row.rating.toFixed(1) + '</td><td>' + predictionPercent(row.winProbability) + '</td><td>' + predictionAmericanOdds(row.winProbability) + '</td><td>' + predictionPercent(row.topThreeProbability) + '</td><td>' + predictionAmericanOdds(row.topThreeProbability) + '</td><td>' + predictionPercent(row.topFiveProbability) + '</td><td>' + predictionAmericanOdds(row.topFiveProbability) + '</td></tr>').join('') + '</tbody></table></div></section>' + retired;
+      elements.predictionsContent.innerHTML = controls + '<section class="prediction-panel"><div class="panel-title"><div><p class="eyebrow">Race forecast</p><h3>' + escapeHtml(season.name) + ' — ' + predictionRoundNumber(round) + ' · ' + escapeHtml(round.race.name) + '</h3></div><p>Each probability is based on 7,000 event-specific simulations with moderate race-to-race performance variance. Open “Why this rating” beside any driver to inspect the inputs.</p></div><div class="table-shell prediction-table-shell"><table class="profile-table prediction-table"><thead><tr>' + predictionHeader('Driver', 'name') + predictionHeader('Model rating', 'rating') + predictionHeader('Win %', 'winProbability') + '<th>Win odds</th>' + predictionHeader('Top 3 %', 'topThreeProbability') + '<th>Top 3 odds</th>' + predictionHeader('Top 5 %', 'topFiveProbability') + '<th>Top 5 odds</th>' + predictionHeader('Pole %', 'poleProbability') + '<th>Pole odds</th>' + predictionHeader('Fastest lap %', 'fastestLapProbability') + '<th>Fastest lap odds</th></tr></thead><tbody>' + rows.map((row) => '<tr><td>' + driverLink(row.name, 'record-driver-link') + predictionRatingDetails(row) + '</td><td class="prediction-rating">' + row.rating.toFixed(1) + '</td><td>' + predictionPercent(row.winProbability) + '</td><td>' + predictionAmericanOdds(row.winProbability) + '</td><td>' + predictionPercent(row.topThreeProbability) + '</td><td>' + predictionAmericanOdds(row.topThreeProbability) + '</td><td>' + predictionPercent(row.topFiveProbability) + '</td><td>' + predictionAmericanOdds(row.topFiveProbability) + '</td><td>' + predictionPercent(row.poleProbability) + '</td><td>' + predictionAmericanOdds(row.poleProbability) + '</td><td>' + predictionPercent(row.fastestLapProbability) + '</td><td>' + predictionAmericanOdds(row.fastestLapProbability) + '</td></tr>').join('') + '</tbody></table></div></section>' + retired;
       return;
     }
     const championshipRows = predictionSortRows(predictionChampionshipForecast(season));
     const preseasonRows = predictionChampionshipForecast(season, false).slice().sort((a, b) => b.championshipProbability - a.championshipProbability || b.preseasonRating - a.preseasonRating || a.name.localeCompare(b.name));
-    elements.predictionsContent.innerHTML = controls + '<section class="prediction-panel"><div class="panel-title"><div><p class="eyebrow">Live title outlook</p><h3>Season 5 championship predictions</h3></div><p>5,000 full-season simulations use current points and every remaining scheduled race. Pole and fastest-lap bonus points are modeled for unrecorded rounds.</p></div><div class="table-shell prediction-table-shell"><table class="profile-table prediction-table"><thead><tr>' + predictionHeader('Driver', 'name') + predictionHeader('Current points', 'currentPoints') + predictionHeader('Model rating', 'preseasonRating') + predictionHeader('Championship %', 'championshipProbability') + '<th>Title odds</th>' + predictionHeader('Top 3 %', 'topThreeProbability') + predictionHeader('Top 5 %', 'topFiveProbability') + '</tr></thead><tbody>' + championshipRows.map((row) => '<tr><td>' + driverLink(row.name, 'record-driver-link') + '</td><td>' + number.format(row.currentPoints) + '</td><td class="prediction-rating">' + row.preseasonRating.toFixed(1) + '</td><td>' + predictionPercent(row.championshipProbability) + '</td><td>' + predictionAmericanOdds(row.championshipProbability) + '</td><td>' + predictionPercent(row.topThreeProbability) + '</td><td>' + predictionPercent(row.topFiveProbability) + '</td></tr>').join('') + '</tbody></table></div></section><section class="prediction-panel preseason-panel"><div class="panel-title"><div><p class="eyebrow">Historical baseline</p><h3>Pre-season rankings</h3></div><p>These stay based only on Seasons 1–4, preserving the outlook before any Season 5 results were recorded.</p></div><div class="table-shell prediction-table-shell"><table class="profile-table prediction-table"><thead><tr><th>Rank</th><th>Driver</th><th>Pre-season rating</th><th>Championship %</th><th>Title odds</th></tr></thead><tbody>' + preseasonRows.map((row, index) => '<tr><td class="standing-rank ' + (index < 3 ? 'top-three' : '') + '">' + String(index + 1).padStart(2, '0') + '</td><td>' + driverLink(row.name, 'record-driver-link') + '</td><td class="prediction-rating">' + row.preseasonRating.toFixed(1) + '</td><td>' + predictionPercent(row.championshipProbability) + '</td><td>' + predictionAmericanOdds(row.championshipProbability) + '</td></tr>').join('') + '</tbody></table></div></section>' + retired;
+    elements.predictionsContent.innerHTML = controls + '<section class="prediction-panel"><div class="panel-title"><div><p class="eyebrow">Live title outlook</p><h3>Season 5 championship predictions</h3></div><p>5,000 full-season simulations use current points and every remaining scheduled race. Each scheduled round uses its own track/car-specific field rating; pole and fastest-lap bonus points are modeled for unrecorded rounds.</p></div><div class="table-shell prediction-table-shell"><table class="profile-table prediction-table"><thead><tr>' + predictionHeader('Driver', 'name') + predictionHeader('Current points', 'currentPoints') + predictionHeader('Model rating', 'preseasonRating') + predictionHeader('Championship %', 'championshipProbability') + '<th>Title odds</th>' + predictionHeader('Top 3 %', 'topThreeProbability') + predictionHeader('Top 5 %', 'topFiveProbability') + '</tr></thead><tbody>' + championshipRows.map((row) => '<tr><td>' + driverLink(row.name, 'record-driver-link') + '</td><td>' + number.format(row.currentPoints) + '</td><td class="prediction-rating">' + row.preseasonRating.toFixed(1) + '</td><td>' + predictionPercent(row.championshipProbability) + '</td><td>' + predictionAmericanOdds(row.championshipProbability) + '</td><td>' + predictionPercent(row.topThreeProbability) + '</td><td>' + predictionPercent(row.topFiveProbability) + '</td></tr>').join('') + '</tbody></table></div></section><section class="prediction-panel preseason-panel"><div class="panel-title"><div><p class="eyebrow">Historical baseline</p><h3>Pre-season rankings</h3></div><p>These stay based only on Seasons 1–4, preserving the outlook before any Season 5 results were recorded.</p></div><div class="table-shell prediction-table-shell"><table class="profile-table prediction-table"><thead><tr><th>Rank</th><th>Driver</th><th>Pre-season rating</th><th>Championship %</th><th>Title odds</th></tr></thead><tbody>' + preseasonRows.map((row, index) => '<tr><td class="standing-rank ' + (index < 3 ? 'top-three' : '') + '">' + String(index + 1).padStart(2, '0') + '</td><td>' + driverLink(row.name, 'record-driver-link') + '</td><td class="prediction-rating">' + row.preseasonRating.toFixed(1) + '</td><td>' + predictionPercent(row.championshipProbability) + '</td><td>' + predictionAmericanOdds(row.championshipProbability) + '</td></tr>').join('') + '</tbody></table></div></section>' + retired;
   }
   const renderSeasonPredictionBase = renderSeason;
   renderSeason = function renderSeasonWithPredictions() { renderSeasonPredictionBase(); renderPredictions(); };
