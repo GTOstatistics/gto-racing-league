@@ -1368,7 +1368,14 @@
     return '<div class="profile-charts"><article><h4>Finishing-position trend</h4><p>Each point is a classified series start. P1 is at the top.</p><div class="chart-scroll"><svg viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="Finishing position by race number"><line class="chart-axis-line" x1="' + margin.left + '" x2="' + (width - margin.right) + '" y1="' + (height - margin.bottom) + '" y2="' + (height - margin.bottom) + '"></line><line class="chart-axis-line" x1="' + margin.left + '" x2="' + margin.left + '" y1="' + margin.top + '" y2="' + (height - margin.bottom) + '"></line>' + yGrid + xLabels + '<path class="progression-line" stroke="' + enhColor(driver.name) + '" d="' + enhSvgLine(points) + '"></path>' + points.map((point, index) => '<circle cx="' + point.x + '" cy="' + point.y + '" r="4" fill="' + enhColor(driver.name) + '"><title>' + escapeHtml(enhRoundLabel(complete[index]) + ': P' + complete[index].position) + '</title></circle>').join('') + '<text class="chart-axis" x="' + (margin.left + plotWidth / 2) + '" y="' + (height - 12) + '" text-anchor="middle">Race number in series</text><text class="chart-axis" transform="translate(16 ' + (margin.top + plotHeight / 2) + ') rotate(-90)" text-anchor="middle">Finishing position</text></svg></div></article></div>';
   }
   function renderRoundResults() {
-    const sourceSeason = getSeason(); const archiveRounds = getArchiveRounds(sourceSeason); const round = archiveRounds[state.roundIndex];
+    const sourceSeason = getSeason();
+    if (sourceSeason.scheduleOnly) {
+      const round = sourceSeason.races[state.roundIndex];
+      if (!round) { elements.roundResults.innerHTML = '<p class="no-results">No round is selected.</p>'; return; }
+      elements.roundResults.innerHTML = '<div class="round-results-header"><div><p class="round-label">' + escapeHtml(sourceSeason.name) + ' — Round ' + (state.roundIndex + 1) + ' · ' + escapeHtml(round.label || 'Race details unavailable') + '</p><h3>' + escapeHtml(round.name || 'TBC') + '</h3></div><p>Schedule only</p></div><p class="no-results">Results will appear after this round has been recorded.</p>';
+      return;
+    }
+    const archiveRounds = getArchiveRounds(sourceSeason); const round = archiveRounds[state.roundIndex];
     if (!round) { elements.roundResults.innerHTML = '<p class="no-results">No round is selected.</p>'; return; }
     const classifiedRows = sourceSeason.drivers.map((driver) => ({ name: driver.name, result: driver.results[round.index] || {} }))
       .filter((entry) => enhResultHasFinish(entry.result) || enhResultHasQualifying(entry.result))
