@@ -1,6 +1,6 @@
 (() => {
   const { seasons, pointsSystem } = window.GTO_DATA;
-  const state = { seasonIndex: seasons.length - 1, roundIndex: 0, sortKey: 'championshipPosition', sortDirection: 'asc', selectedDriver: null, profileSummarySortKey: 'seasonIndex', profileSummarySortDirection: 'desc', profileH2HSortKey: 'raceMeetings', profileH2HSortDirection: 'desc', profileCarSortKey: 'avgFinish', profileCarSortDirection: 'asc', profileLogSortKey: 'seasonIndex', profileLogSortDirection: 'desc', recordType: 'race', recordPosition: 1, carClass: null, carSortKey: 'points', carSortDirection: 'desc', leadPeriod: 'overall', leadSortKey: 'percentage', leadSortDirection: 'desc', trackSortKey: 'wins', trackSortDirection: 'desc' };
+  const state = { seasonIndex: Math.max(0, seasons.findIndex((season) => season.id === '4')), roundIndex: 0, sortKey: 'championshipPosition', sortDirection: 'asc', selectedDriver: null, profileSummarySortKey: 'seasonIndex', profileSummarySortDirection: 'desc', profileH2HSortKey: 'raceMeetings', profileH2HSortDirection: 'desc', profileCarSortKey: 'avgFinish', profileCarSortDirection: 'asc', profileLogSortKey: 'seasonIndex', profileLogSortDirection: 'desc', recordType: 'race', recordPosition: 1, carClass: null, carSortKey: 'points', carSortDirection: 'desc', leadPeriod: 'overall', leadSortKey: 'percentage', leadSortDirection: 'desc', trackSortKey: 'wins', trackSortDirection: 'desc' };
   const elements = {
     tabs: document.querySelector('#season-tabs'), summary: document.querySelector('#season-summary'), statCards: document.querySelector('#stat-cards'),
     standingsHeaders: document.querySelector('#standings-headers'), standings: document.querySelector('#standings-body'), standingsSortStatus: document.querySelector('#standings-sort-status'), standingsViewControls: document.querySelector('#standings-view-controls'),
@@ -30,7 +30,11 @@
     return match ? Number(match[1]) : null;
   }
   function getArchiveRounds(season) {
+    if (season.scheduleOnly) return [];
     return season.races.map((race, index) => ({ race, index })).filter(({ index }) => season.id !== '1' || season.drivers.some((driver) => driver.results[index]?.position !== null && driver.results[index]?.position !== undefined));
+  }
+  function getScheduleRounds(season) {
+    return season.scheduleOnly ? season.races.map((race, index) => ({ race, index })) : getArchiveRounds(season);
   }
   function getParticipationLapStats(entries) {
     const eligible = entries.filter((entry) => entry.position !== null && entry.position !== undefined && getRoundLaps(entry.race));
@@ -143,7 +147,7 @@
   }
 
   function renderTabs() {
-    elements.tabs.innerHTML = seasons.map((season, index) => `<button class="season-tab" role="tab" type="button" aria-selected="${index === state.seasonIndex}" aria-controls="standings" data-season-index="${index}">${escapeHtml(season.name)}<span>${getArchiveRounds(season).length} rounds</span></button>`).join('');
+    elements.tabs.innerHTML = seasons.map((season, index) => `<button class="season-tab" role="tab" type="button" aria-selected="${index === state.seasonIndex}" aria-controls="standings" data-season-index="${index}">${escapeHtml(season.name)}<span>${getScheduleRounds(season).length} rounds</span></button>`).join('');
   }
   function getStandingsUsePointDrops(season) { return seasonHasPointDrops(season) && state.standingsMode !== 'full'; }
   function renderStandingsViewControls() {
@@ -159,7 +163,7 @@
       '<p class="standings-bonus-note">Championship bonus points: +1 for fastest lap, +1 for pole position, and +5 invert points when the pole winner elects to invert the field. Invert points began in Season 4 and apply only when that option is chosen.</p>';
   }
   function renderOverview(standings) {
-    const sourceSeason = getSeason(); const season = { ...sourceSeason, races: getArchiveRounds(sourceSeason).map(({ race }) => race) }; const leader = standings[0];
+    const sourceSeason = getSeason(); const season = { ...sourceSeason, races: getScheduleRounds(sourceSeason).map(({ race }) => race) }; const leader = standings[0];
     const completedRounds = season.races.filter((_, index) => roundResultRows(season, index).length).length;
     const totalStarts = standings.reduce((total, driver) => total + driver.completed.length, 0);
     const pointsTotal = standings.reduce((total, driver) => total + driver.points, 0);
@@ -216,14 +220,14 @@
     renderSortControls();
   }
   function renderSchedule() {
-    const sourceSeason = getSeason(); const season = { ...sourceSeason, races: getArchiveRounds(sourceSeason).map(({ race }) => race) };
+    const sourceSeason = getSeason(); const season = { ...sourceSeason, races: getScheduleRounds(sourceSeason).map(({ race }) => race) };
     elements.raceCards.innerHTML = season.races.map((race, index) => {
       const winner = roundResultRows(season, index).find((entry) => entry.result.position === 1);
       return `<article class="race-card"><div class="race-number">Round ${String(index + 1).padStart(2, '0')}<span>${winner ? 'Final' : 'No result'}</span></div><h3>${enhCrownJewelName(race)}</h3><p>${escapeHtml(race.label || 'Round details unavailable')}</p><p class="winner">${winner ? `Winner · ${driverLink(winner.name, 'inline-driver-link')}` : 'No classified finish recorded'}</p></article>`;
     }).join('');
   }
   function renderRoundPicker() {
-    const sourceSeason = getSeason(); const season = { ...sourceSeason, races: getArchiveRounds(sourceSeason).map(({ race }) => race) }; if (state.roundIndex >= season.races.length) state.roundIndex = 0;
+    const sourceSeason = getSeason(); const season = { ...sourceSeason, races: getScheduleRounds(sourceSeason).map(({ race }) => race) }; if (state.roundIndex >= season.races.length) state.roundIndex = 0;
     elements.roundSelect.innerHTML = season.races.map((race, index) => `<option value="${index}" ${index === state.roundIndex ? 'selected' : ''}>Round ${index + 1} · ${escapeHtml(race.name || 'TBC')}</option>`).join('');
   }
   function renderRoundResults() {
@@ -625,7 +629,14 @@
     });
   }
   function renderRoundResults() {
-    const sourceSeason = getSeason(); const archiveRounds = getArchiveRounds(sourceSeason); const round = archiveRounds[state.roundIndex];
+    const sourceSeason = getSeason();
+    if (sourceSeason.scheduleOnly) {
+      const round = sourceSeason.races[state.roundIndex];
+      if (!round) { elements.roundResults.innerHTML = '<p class="no-results">No round is selected.</p>'; return; }
+      elements.roundResults.innerHTML = '<div class="round-results-header"><div><p class="round-label">' + escapeHtml(sourceSeason.name) + ' — Round ' + (state.roundIndex + 1) + ' · ' + escapeHtml(round.label || 'Race details unavailable') + '</p><h3>' + escapeHtml(round.name || 'TBC') + '</h3></div><p>Schedule only</p></div><p class="no-results">Results will appear after this round has been recorded.</p>';
+      return;
+    }
+    const archiveRounds = getArchiveRounds(sourceSeason); const round = archiveRounds[state.roundIndex];
     if (!round) { elements.roundResults.innerHTML = '<p class="no-results">No round is selected.</p>'; return; }
     const rows = sourceSeason.drivers.map((driver) => ({ name: driver.name, result: driver.results[round.index] || {} }))
       .filter((entry) => enhResultHasFinish(entry.result) || enhResultHasQualifying(entry.result));
