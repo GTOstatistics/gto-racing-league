@@ -277,6 +277,16 @@ tbody tr:hover { background: #fbfcfe; }
 
 /* Dynamic archive tools */
 .power-rankings-content { width: fit-content; max-width: 100%; }
+.predictions-content { width: fit-content; max-width: 100%; }
+.prediction-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; margin-bottom: 18px; }
+.prediction-round-picker { margin-left: auto; }
+.prediction-panel { width: fit-content; max-width: 100%; margin-bottom: 20px; padding: 24px; border: 1px solid var(--ink); background: var(--card); box-shadow: var(--shadow); }
+.prediction-panel .panel-title { margin-bottom: 18px; }
+.prediction-panel .panel-title > p { max-width: 470px; }
+.prediction-table { min-width: 790px; }
+.prediction-table td { font-weight: 800; }
+.prediction-rating { color: var(--blue); font-weight: 950 !important; }
+.prediction-disclaimer { width: fit-content; max-width: 760px; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
 .power-rankings-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; margin-bottom: 18px; }
 .power-round-picker { margin-left: auto; }
 .power-ranking-panel { padding: 24px; border: 1px solid var(--ink); background: var(--card); box-shadow: var(--shadow); }
@@ -398,6 +408,10 @@ tbody tr:hover { background: #fbfcfe; }
 @media (max-width: 620px) {
   .power-rankings-controls { display: grid; align-items: start; }
   .power-round-picker { margin-left: 0; }
+  .prediction-controls { display: grid; align-items: start; }
+  .prediction-round-picker { margin-left: 0; }
+  .prediction-panel { padding: 16px; }
+  .prediction-table { min-width: 690px; }
   .power-ranking-panel { padding: 16px; }
   .power-rankings-table { min-width: 820px; }
   .result-sort-controls { display: grid; align-items: start; gap: 7px; }
@@ -430,6 +444,7 @@ tbody tr:hover { background: #fbfcfe; }
 /* Let archive components end at their content width on larger screens. */
 @media (min-width: 621px) {
   .did-you-know,
+  .predictions-content,
   .stat-cards,
   .race-grid,
   .results-list,
@@ -476,6 +491,7 @@ tbody tr:hover { background: #fbfcfe; }
    without exceeding the available reading width. */
 @media (max-width: 620px) {
   .did-you-know,
+  .predictions-content,
   .stat-cards,
   .race-grid,
   .results-list,
@@ -494,6 +510,7 @@ tbody tr:hover { background: #fbfcfe; }
   .profile-charts article,
   .records-header,
   .record-panel,
+  .prediction-panel,
   .special-records,
   .track-summary,
   .track-events,
