@@ -30,6 +30,7 @@
       <nav aria-label="Section navigation">
         <a href="#standings">Standings</a>
         <a href="#power-rankings">Power rankings</a>
+        <a href="#predictions">Predictions</a>
         <a href="#car-stats">Car stats</a>
         <a href="#comparison">Compare</a>
         <a href="#driver-profile">Drivers</a>
@@ -126,6 +127,17 @@
           <p class="section-note">Compare each driver’s performance across the selected season or one completed round.</p>
         </div>
         <div id="power-rankings-content" class="power-rankings-content" aria-live="polite"></div>
+      </section>
+
+      <section id="predictions" class="section-wrap section-block predictions-section" aria-labelledby="predictions-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Season 5 outlook</p>
+            <h2 id="predictions-title">Predictions</h2>
+          </div>
+          <p class="section-note">Model-driven odds from the recorded GTO archive. They update after each recorded Season 5 result.</p>
+        </div>
+        <div id="predictions-content" class="predictions-content" aria-live="polite"></div>
       </section>
 
       <section id="car-stats" class="section-wrap section-block car-stats-section" aria-labelledby="car-stats-title">
@@ -241,7 +253,7 @@
       <p>Season statistics from the supplied score sheets.</p>
     </footer>
 
-  <script src="data.js?v=season5-schedule-1"></script>
-  <script src="app.js?v=season5-schedule-2"></script>
+  <script src="data.js?v=season5-predictions-1"></script>
+  <script src="app.js?v=season5-predictions-1"></script>
   </body>
 </html>
