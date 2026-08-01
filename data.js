@@ -14,6 +14,11 @@ window.GTO_DATA.seasons.push({
   id: '5',
   name: 'Season 5',
   scheduleOnly: true,
+  predictionDrivers: [
+    'Austin', 'Bard Wurton', 'Braxton Marshall', 'Colin Mckevitt', 'Cross Alberti', 'Dante Quarato',
+    'David Pinkston', 'Gavyn Morrison', 'Ike Klockman', 'Jack Mckevitt', 'Javin Tucker', 'Landon Beech',
+    'Nick Collier', 'Peter Braxton', 'Rashad Metze', 'Trevor Levine', 'YattMan', 'Zay Smitty'
+  ],
   races: [
     { name: 'Daytona 50.0 (Drafting)', label: 'Race 1' },
     { name: 'Barcelona Rallycross (Dirt)', label: 'Race 2' },
