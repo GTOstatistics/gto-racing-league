@@ -283,9 +283,14 @@ tbody tr:hover { background: #fbfcfe; }
 .prediction-panel { width: fit-content; max-width: 100%; margin-bottom: 20px; padding: 24px; border: 1px solid var(--ink); background: var(--card); box-shadow: var(--shadow); }
 .prediction-panel .panel-title { margin-bottom: 18px; }
 .prediction-panel .panel-title > p { max-width: 470px; }
-.prediction-table { min-width: 790px; }
+.prediction-table { min-width: 1120px; }
 .prediction-table td { font-weight: 800; }
 .prediction-rating { color: var(--blue); font-weight: 950 !important; }
+.prediction-explanation { margin-top: 6px; font-size: 10px; font-weight: 700; }
+.prediction-explanation summary { width: fit-content; cursor: pointer; color: var(--blue); font-weight: 900; }
+.prediction-explanation-copy { width: 300px; max-width: 100%; margin-top: 7px; padding: 9px 10px; border: 1px solid var(--line); background: var(--paper); color: var(--muted); line-height: 1.45; }
+.prediction-explanation-copy p { margin: 0 0 6px; }
+.prediction-explanation-copy p:last-child { margin-bottom: 0; }
 .prediction-disclaimer { width: fit-content; max-width: 760px; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
 .power-rankings-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; margin-bottom: 18px; }
 .power-round-picker { margin-left: auto; }
@@ -411,7 +416,7 @@ tbody tr:hover { background: #fbfcfe; }
   .prediction-controls { display: grid; align-items: start; }
   .prediction-round-picker { margin-left: 0; }
   .prediction-panel { padding: 16px; }
-  .prediction-table { min-width: 690px; }
+  .prediction-table { min-width: 950px; }
   .power-ranking-panel { padding: 16px; }
   .power-rankings-table { min-width: 820px; }
   .result-sort-controls { display: grid; align-items: start; gap: 7px; }
