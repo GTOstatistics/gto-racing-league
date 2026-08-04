@@ -1193,9 +1193,12 @@
   function getParticipationFactor(starts, scheduledRaces) {
     return scheduledRaces > 0 ? 0.85 + 0.15 * starts / scheduledRaces : 1;
   }
+  function getPowerScheduledRaceCount(season) {
+    return season.id === '1' ? getArchiveRounds(season).length : season.races.length;
+  }
   function getSeasonRaceAverageRows(season) {
     const rounds = getArchiveRounds(season);
-    const scheduledRaces = season.id === '1' ? rounds.length : season.races.length;
+    const scheduledRaces = getPowerScheduledRaceCount(season);
     const raceRankings = new Map(rounds.map((round) => [round.index, new Map(getRacePowerRankings(season, round).map((row) => [row.name, row]))]));
     return season.drivers.map((driver) => {
       const startedRounds = rounds.filter(({ index }) => enhResultHasFinish(driver.results[index]));
@@ -1293,7 +1296,7 @@
       ? 'Season Power Rankings are based on each driver’s average Individual Race Power Ranking score. A moderate participation adjustment rewards drivers who completed more of the season without treating missed races as zero. Season Overall ratings are scaled against the greatest eligible adjusted season in league history, which is rated 100.0.'
       : 'Individual Race Overall weights: Finish 45%, Qualifying 15%, Laps Led 20%, Racecraft 15%, and Fastest Lap 5%. Racecraft measures a driver’s racecraft by rewarding meaningful overtakes and successful defense of track position. Passing near the front is worth more than passing near the back, and drivers who qualify near the front are rewarded for successfully defending those positions. Finish and qualifying use softened distance from the best position; Laps Led compares each driver’s scheduled-lap percentage with the best in the race, Fastest Lap is 100.0 or 0.0, and a true Grand Slam scores 100.0 overall.';
     const detail = mode === 'season'
-      ? '<details class="power-ranking-details"><summary>How season ratings are calculated</summary><p>Each completed start uses the Individual Race Overall: Finish 45%, Qualifying 15%, Laps Led 20%, Racecraft 15%, and Fastest Lap 5%. Race Average = the sum of those race scores ÷ starts; missed races are not entered as zero.</p><p>Participation Factor = 0.85 + 0.15 × (starts ÷ scheduled races). Adjusted Average = Race Average × Participation Factor.</p><p>Season Overall = 50 + 50 × ((Adjusted Average − 15) ÷ (best eligible Adjusted Average ever − 15)). The best eligible adjusted season is 100.0. A driver needs starts in at least half of scheduled races to establish that benchmark; this season requires ' + Math.ceil(season.races.length * 0.50) + ' starts.' + (benchmark ? ' The current benchmark is ' + escapeHtml(benchmark.name) + ' in ' + escapeHtml(benchmark.season.name) + ' at an Adjusted Average of ' + powerScore(benchmark.adjustedAverage) + '.' : '') + '</p><p>† means the driver is listed with at least three starts but has too few starts to establish the all-time benchmark.</p></details>'
+      ? '<details class="power-ranking-details"><summary>How season ratings are calculated</summary><p>Each completed start uses the Individual Race Overall: Finish 45%, Qualifying 15%, Laps Led 20%, Racecraft 15%, and Fastest Lap 5%. Race Average = the sum of those race scores ÷ starts; missed races are not entered as zero.</p><p>Participation Factor = 0.85 + 0.15 × (starts ÷ scheduled races). Adjusted Average = Race Average × Participation Factor.</p><p>Season Overall = 50 + 50 × ((Adjusted Average − 15) ÷ (best eligible Adjusted Average ever − 15)). The best eligible adjusted season is 100.0. A driver needs starts in at least half of scheduled races to establish that benchmark; this season requires ' + Math.ceil(getPowerScheduledRaceCount(season) * 0.50) + ' starts.' + (benchmark ? ' The current benchmark is ' + escapeHtml(benchmark.name) + ' in ' + escapeHtml(benchmark.season.name) + ' at an Adjusted Average of ' + powerScore(benchmark.adjustedAverage) + '.' : '') + '</p><p>† means the driver is listed with at least three starts but has too few starts to establish the all-time benchmark.</p></details>'
       : '';
     const cell = (row, metric) => {
       if (metric === 'rank') return String(row.rank).padStart(2, '0');
