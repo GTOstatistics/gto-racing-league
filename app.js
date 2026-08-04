@@ -1126,10 +1126,10 @@
   const powerMetricLabels = {
     finish: 'Finish', qualifying: 'Qualifying', fastestLaps: 'Fastest laps', consistency: 'Consistency',
     lapsLed: 'Laps led', movement: 'Overtaking / Defending', overall: 'Overall', rank: 'Rank', name: 'Driver',
-    starts: 'Starts', averageRaceOverall: 'Average Race Overall', seasonOverall: 'Season Overall'
+    starts: 'Starts', averageRaceOverall: 'Race Average', participationFactor: 'Participation Factor', adjustedAverage: 'Adjusted Average', seasonOverall: 'Season Overall'
   };
   const powerMetricDirections = { finish: 'low', qualifying: 'low', fastestLaps: 'high', consistency: 'low', lapsLed: 'high', movement: 'high' };
-  const powerSortDefaults = { rank: 'asc', name: 'asc', starts: 'desc', averageRaceOverall: 'desc', seasonOverall: 'desc', finish: 'desc', qualifying: 'desc', fastestLaps: 'desc', consistency: 'desc', lapsLed: 'desc', movement: 'desc', overall: 'desc' };
+  const powerSortDefaults = { rank: 'asc', name: 'asc', starts: 'desc', averageRaceOverall: 'desc', participationFactor: 'desc', adjustedAverage: 'desc', seasonOverall: 'desc', finish: 'desc', qualifying: 'desc', fastestLaps: 'desc', consistency: 'desc', lapsLed: 'desc', movement: 'desc', overall: 'desc' };
   const powerMean = (values) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
   const powerStandardDeviation = (values) => {
     if (values.length < 2) return null;
@@ -1171,37 +1171,49 @@
     assignPowerRanks(rows);
     return rows;
   }
+  function getParticipationFactor(starts, scheduledRaces) {
+    return scheduledRaces > 0 ? 0.85 + 0.15 * starts / scheduledRaces : 1;
+  }
   function getSeasonRaceAverageRows(season) {
-    const raceRankings = new Map(getArchiveRounds(season).map((round) => [round.index, new Map(getRacePowerRankings(season, round).map((row) => [row.name, row]))]));
+    const rounds = getArchiveRounds(season);
+    const scheduledRaces = season.races.length;
+    const raceRankings = new Map(rounds.map((round) => [round.index, new Map(getRacePowerRankings(season, round).map((row) => [row.name, row]))]));
     return season.drivers.map((driver) => {
-      const startedScores = getArchiveRounds(season).filter(({ index }) => enhResultHasFinish(driver.results[index])).map(({ index }) => raceRankings.get(index)?.get(driver.name)?.overall).filter(Number.isFinite);
-      const starts = startedScores.length;
+      const startedRounds = rounds.filter(({ index }) => enhResultHasFinish(driver.results[index]));
+      const starts = startedRounds.length;
+      const startedScores = startedRounds.map(({ index }) => raceRankings.get(index)?.get(driver.name)?.overall).filter(Number.isFinite);
+      const participationFactor = getParticipationFactor(starts, scheduledRaces);
       return {
         name: driver.name,
         starts,
-        averageRaceOverall: powerMean(startedScores),
-        benchmarkEligible: starts >= Math.ceil(season.races.length * 0.50),
-        benchmarkMinimumStarts: Math.ceil(season.races.length * 0.50),
+        averageRaceOverall: startedScores.length === starts ? powerMean(startedScores) : null,
+        participationFactor,
+        adjustedAverage: startedScores.length === starts ? powerMean(startedScores) * participationFactor : null,
+        benchmarkEligible: starts >= Math.ceil(scheduledRaces * 0.50),
+        benchmarkMinimumStarts: Math.ceil(scheduledRaces * 0.50),
         scores: {}
       };
-    }).filter((row) => row.starts >= 3 && Number.isFinite(row.averageRaceOverall));
+    }).filter((row) => row.starts >= 3 && Number.isFinite(row.averageRaceOverall) && Number.isFinite(row.adjustedAverage));
   }
   function getHistoricalPowerBenchmark() {
     const eligibleRows = seasons.flatMap((season) => getSeasonRaceAverageRows(season).map((row) => ({ ...row, season }))).filter((row) => row.benchmarkEligible);
     if (!eligibleRows.length) return null;
-    return eligibleRows.reduce((best, row) => row.averageRaceOverall > best.averageRaceOverall ? row : best);
+    return eligibleRows.reduce((best, row) => row.adjustedAverage > best.adjustedAverage ? row : best);
+  }
+  function assignSeasonPowerRanks(rows) {
+    rows.slice().sort((a, b) => b.adjustedAverage - a.adjustedAverage || a.name.localeCompare(b.name)).forEach((row, index) => { row.rank = index + 1; });
   }
   function getSeasonPowerRankings(season) {
     const benchmark = getHistoricalPowerBenchmark();
-    const benchmarkAverage = benchmark?.averageRaceOverall;
+    const benchmarkAverage = benchmark?.adjustedAverage;
     const denominator = Number.isFinite(benchmarkAverage) ? benchmarkAverage - 15 : null;
     const rows = getSeasonRaceAverageRows(season).map((row) => {
-      const scaled = denominator > 0 ? 50 + 50 * ((row.averageRaceOverall - 15) / denominator) : (row.averageRaceOverall === benchmarkAverage ? 100 : 50);
-      row.overall = row.averageRaceOverall === benchmarkAverage ? 100 : Math.max(0, Math.min(100, scaled));
+      const scaled = denominator > 0 ? 50 + 50 * ((row.adjustedAverage - 15) / denominator) : (row.adjustedAverage === benchmarkAverage ? 100 : 50);
+      row.overall = row.adjustedAverage === benchmarkAverage ? 100 : Math.max(0, Math.min(100, scaled));
       row.isBenchmark = Boolean(benchmark && row.name === benchmark.name && season.id === benchmark.season.id);
       return row;
     });
-    assignPowerRanks(rows);
+    assignSeasonPowerRanks(rows);
     return rows;
   }
   function getRacePowerRankings(season, round) {
@@ -1238,7 +1250,7 @@
   function sortPowerRankings(rows, mode) {
     const key = mode === 'season' ? state.powerSeasonSortKey : state.powerRaceSortKey;
     const direction = mode === 'season' ? state.powerSeasonSortDirection : state.powerRaceSortDirection;
-    const value = (row) => key === 'name' ? row.name : key === 'rank' ? row.rank : key === 'overall' || key === 'seasonOverall' ? row.overall : key === 'starts' || key === 'averageRaceOverall' ? row[key] : row.scores[key];
+    const value = (row) => key === 'name' ? row.name : key === 'rank' ? row.rank : key === 'overall' || key === 'seasonOverall' ? row.overall : key === 'starts' || key === 'averageRaceOverall' || key === 'participationFactor' || key === 'adjustedAverage' ? row[key] : row.scores[key];
     return rows.slice().sort((a, b) => {
       const aValue = value(a); const bValue = value(b);
       if (!Number.isFinite(aValue) && typeof aValue !== 'string') return !Number.isFinite(bValue) && typeof bValue !== 'string' ? a.name.localeCompare(b.name) : 1;
@@ -1252,23 +1264,25 @@
     if (!state.powerRankingsMode) state.powerRankingsMode = 'season';
     const mode = state.powerRankingsMode;
     const round = rounds[state.roundIndex];
-    const metrics = mode === 'season' ? ['starts', 'averageRaceOverall', 'seasonOverall'] : ['overall', 'finish', 'qualifying', 'lapsLed', 'movement', 'fastestLaps'];
+    const metrics = mode === 'season' ? ['starts', 'averageRaceOverall', 'participationFactor', 'adjustedAverage', 'seasonOverall'] : ['overall', 'finish', 'qualifying', 'lapsLed', 'movement', 'fastestLaps'];
     const rankings = mode === 'season' ? getSeasonPowerRankings(season) : getRacePowerRankings(season, round);
     const rows = sortPowerRankings(rankings, mode);
     const roundPicker = mode === 'race' ? '<label class="round-picker power-round-picker"><span>Choose round</span><select data-power-round-select>' + rounds.map(({ race }, index) => '<option value="' + index + '"' + (index === state.roundIndex ? ' selected' : '') + '>Round ' + (index + 1) + ' — ' + escapeHtml(race.name || 'TBC') + '</option>').join('') + '</select></label>' : '';
     const heading = mode === 'season' ? escapeHtml(season.name) + ' power rankings' : escapeHtml(season.name) + ' — Round ' + (state.roundIndex + 1) + ' power rankings';
     const benchmark = mode === 'season' ? getHistoricalPowerBenchmark() : null;
     const note = mode === 'season'
-      ? 'Season Overall is based on the average of each driver’s Individual Race Power Ranking scores. Ratings are scaled against the greatest eligible season in league history, which is rated 100.0.'
+      ? 'Season Power Rankings are based on each driver’s average Individual Race Power Ranking score. A moderate participation adjustment rewards drivers who completed more of the season without treating missed races as zero. Season Overall ratings are scaled against the greatest eligible adjusted season in league history, which is rated 100.0.'
       : 'Individual Race Overall weights: Finish 45%, Qualifying 15%, Laps Led 20%, Overtaking / Defending 15%, and Fastest Lap 5%. Scores compare each driver with the category leader, never the last-place driver. Finish and qualifying use softened distance from the best position; Laps Led compares each driver’s scheduled-lap percentage with the best in the race. O/D remains the front-weighted 0–100 race score, Fastest Lap is 100.0 or 0.0, and a true Grand Slam scores 100.0 overall.';
     const detail = mode === 'season'
-      ? '<details class="power-ranking-details"><summary>How season ratings are calculated</summary><p>Each completed start uses the Individual Race Overall: Finish 45%, Qualifying 15%, Laps Led 20%, Overtaking / Defending 15%, and Fastest Lap 5%. Those race scores are averaged without assigning zeroes for missed races.</p><p>The highest average from every driver-season with starts in at least half of its scheduled races becomes the all-time 100.0 benchmark. This season requires ' + Math.ceil(season.races.length * 0.50) + ' starts to be benchmark-eligible.' + (benchmark ? ' The current benchmark is ' + escapeHtml(benchmark.name) + ' in ' + escapeHtml(benchmark.season.name) + ' at ' + powerScore(benchmark.averageRaceOverall) + '.' : '') + '</p><p>† means the driver is listed with at least three starts but has too few starts to establish the all-time benchmark.</p></details>'
+      ? '<details class="power-ranking-details"><summary>How season ratings are calculated</summary><p>Each completed start uses the Individual Race Overall: Finish 45%, Qualifying 15%, Laps Led 20%, Overtaking / Defending 15%, and Fastest Lap 5%. Race Average = the sum of those race scores ÷ starts; missed races are not entered as zero.</p><p>Participation Factor = 0.85 + 0.15 × (starts ÷ scheduled races). Adjusted Average = Race Average × Participation Factor.</p><p>Season Overall = 50 + 50 × ((Adjusted Average − 15) ÷ (best eligible Adjusted Average ever − 15)). The best eligible adjusted season is 100.0. A driver needs starts in at least half of scheduled races to establish that benchmark; this season requires ' + Math.ceil(season.races.length * 0.50) + ' starts.' + (benchmark ? ' The current benchmark is ' + escapeHtml(benchmark.name) + ' in ' + escapeHtml(benchmark.season.name) + ' at an Adjusted Average of ' + powerScore(benchmark.adjustedAverage) + '.' : '') + '</p><p>† means the driver is listed with at least three starts but has too few starts to establish the all-time benchmark.</p></details>'
       : '';
     const cell = (row, metric) => {
       if (metric === 'rank') return String(row.rank).padStart(2, '0');
       if (metric === 'name') return driverLink(row.name, 'record-driver-link') + (mode === 'season' && !row.benchmarkEligible ? ' <sup title="Too few starts to establish the all-time benchmark" aria-label="Too few starts to establish the all-time benchmark">†</sup>' : '');
       if (metric === 'starts') return String(row.starts);
       if (metric === 'averageRaceOverall') return powerScore(row.averageRaceOverall);
+      if (metric === 'participationFactor') return Number.isFinite(row.participationFactor) ? row.participationFactor.toFixed(3) : '—';
+      if (metric === 'adjustedAverage') return powerScore(row.adjustedAverage);
       return powerScore(metric === 'overall' || metric === 'seasonOverall' ? row.overall : row.scores[metric]);
     };
     elements.powerRankingsContent.innerHTML = '<div class="power-rankings-controls"><div class="segmented-controls" aria-label="Power rankings view"><button type="button" data-power-rankings-mode="season" aria-pressed="' + (mode === 'season') + '">Season power rankings</button><button type="button" data-power-rankings-mode="race" aria-pressed="' + (mode === 'race') + '">Individual race power rankings</button></div>' + roundPicker + '</div><section class="power-ranking-panel"><div class="panel-title"><div><p class="eyebrow">Performance index</p><h3>' + heading + '</h3></div><p>' + note + '</p></div>' + detail + '<div class="table-shell power-rankings-table-shell"><table class="profile-table power-rankings-table"><thead><tr>' + ['rank', 'name', ...metrics].map((metric) => powerSortHeader(metric, mode)).join('') + '</tr></thead><tbody>' + (rows.map((row) => '<tr>' + ['rank', 'name', ...metrics].map((metric) => '<td class="' + (metric === 'overall' || metric === 'seasonOverall' ? 'power-overall' : '') + '">' + cell(row, metric) + '</td>').join('') + '</tr>').join('') || '<tr><td colspan="' + (metrics.length + 2) + '">No completed results are available for this view.</td></tr>') + '</tbody></table></div></section>';
@@ -1289,7 +1303,7 @@
       progressionMode: 'all', progressionSelected: new Set(), profileTab: 'overview', profileRaceSeason: null,
       profileTrackSortKey: 'track', profileTrackSortDirection: 'asc', compareSeason: 'all', extraSorts: {}, specialRecordFilter: 'all', didYouKnowIndex: null, didYouKnowTimer: null,
       roundSortKey: 'position', roundSortDirection: 'asc', standingsMode: 'drops', powerRankingsMode: 'season',
-      powerSeasonSortKey: 'seasonOverall', powerSeasonSortDirection: 'desc', powerRaceSortKey: 'overall', powerRaceSortDirection: 'desc'
+      powerSeasonSortKey: 'adjustedAverage', powerSeasonSortDirection: 'desc', powerRaceSortKey: 'overall', powerRaceSortDirection: 'desc'
     });
     Object.assign(elements, {
       progressionControls: document.querySelector('#progression-controls'), progressionChart: document.querySelector('#progression-chart'),
