@@ -2002,7 +2002,7 @@
     const mode = event.target.closest('[data-prediction-mode]'); const raceView = event.target.closest('[data-prediction-race-view]'); const headToHeadMode = event.target.closest('[data-prediction-h2h-mode]'); const showMore = event.target.closest('[data-prediction-h2h-more]'); const sort = event.target.closest('[data-prediction-sort-key]');
     if (mode) { state.predictionMode = mode.dataset.predictionMode; state.predictionSortKey = mode.dataset.predictionMode === 'race' ? 'winProbability' : 'championshipProbability'; state.predictionSortDirection = 'desc'; renderPredictions(); return; }
     if (raceView) { state.predictionRaceView = raceView.dataset.predictionRaceView; renderPredictions(); return; }
-    if (headToHeadMode) { state.predictionH2HMode = headToHeadMode.dataset.predictionH2HMode; renderPredictions(); return; }
+    if (headToHeadMode) { state.predictionH2HMode = headToHeadMode.dataset.predictionH2hMode; renderPredictions(); return; }
     if (showMore) { state.predictionH2HVisible = (state.predictionH2HVisible || 25) + 25; renderPredictions(); return; }
     if (!sort) return;
     const key = sort.dataset.predictionSortKey;
