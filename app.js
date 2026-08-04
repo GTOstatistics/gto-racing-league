@@ -1910,24 +1910,30 @@
       + '<p><strong>Final event-specific rating:</strong> ' + row.rating.toFixed(1) + '</p></div></details>';
   }
   function predictionHeadToHeadCell(name, probability, odds, status) {
-    return '<div class="prediction-h2h-driver"><strong>' + driverLink(name, 'record-driver-link') + '</strong><span>' + predictionPercent(probability) + ' <b aria-hidden="true">&middot;</b> ' + odds + '</span><small>' + status + '</small></div>';
+    return '<div class="prediction-h2h-driver"><strong>' + driverLink(name, 'record-driver-link') + '</strong><span class="prediction-h2h-mobile-metrics">' + predictionPercent(probability) + ' <b aria-hidden="true">&middot;</b> ' + odds + '</span><small>' + status + '</small></div>';
+  }
+  function predictionH2HDefaultDirection(key) {
+    return key === 'driver1Name' || key === 'driver2Name' || key === 'closeness' ? 'asc' : 'desc';
+  }
+  function predictionH2HValue(matchup, key) {
+    if (key === 'driver1AmericanOdds') return matchup.driver1Probability;
+    if (key === 'driver2AmericanOdds') return matchup.driver2Probability;
+    return matchup[key];
+  }
+  function predictionSortHeadToHeadRows(rows, view) {
+    const key = view === 'all' ? state.predictionH2HAllSortKey : state.predictionH2HDriverSortKey;
+    const direction = view === 'all' ? state.predictionH2HAllSortDirection : state.predictionH2HDriverSortDirection;
+    return rows.slice().sort((first, second) => {
+      const firstValue = predictionH2HValue(first, key); const secondValue = predictionH2HValue(second, key);
+      const comparison = typeof firstValue === 'string' ? firstValue.localeCompare(secondValue) : firstValue - secondValue;
+      return comparison * (direction === 'asc' ? 1 : -1) || first.driver1Name.localeCompare(second.driver1Name) || first.driver2Name.localeCompare(second.driver2Name);
+    });
   }
   function predictionAllMatchups(headToHead) {
-    const sort = state.predictionH2HAllSort || 'even';
-    return headToHead.matchups.map((matchup) => predictionOrientMatchup(matchup)).sort((first, second) => {
-      if (sort === 'favorite') return second.driver1Probability - first.driver1Probability || first.driver1Name.localeCompare(second.driver1Name) || first.driver2Name.localeCompare(second.driver2Name);
-      if (sort === 'name') return first.driver1Name.localeCompare(second.driver1Name) || first.driver2Name.localeCompare(second.driver2Name);
-      return first.closeness - second.closeness || first.driver1Name.localeCompare(second.driver1Name) || first.driver2Name.localeCompare(second.driver2Name);
-    });
+    return predictionSortHeadToHeadRows(headToHead.matchups.map((matchup) => predictionOrientMatchup(matchup)), 'all');
   }
   function predictionDriverMatchups(headToHead, selectedDriver) {
-    const sort = state.predictionH2HDriverSort || 'even';
-    return headToHead.matchups.filter((matchup) => matchup.driverAName === selectedDriver || matchup.driverBName === selectedDriver).map((matchup) => predictionOrientMatchup(matchup, selectedDriver)).sort((first, second) => {
-      if (sort === 'best') return second.driver1Probability - first.driver1Probability || first.driver2Name.localeCompare(second.driver2Name);
-      if (sort === 'toughest') return first.driver1Probability - second.driver1Probability || first.driver2Name.localeCompare(second.driver2Name);
-      if (sort === 'name') return first.driver2Name.localeCompare(second.driver2Name);
-      return first.closeness - second.closeness || first.driver2Name.localeCompare(second.driver2Name);
-    });
+    return predictionSortHeadToHeadRows(headToHead.matchups.filter((matchup) => matchup.driverAName === selectedDriver || matchup.driverBName === selectedDriver).map((matchup) => predictionOrientMatchup(matchup, selectedDriver)), 'driver');
   }
   function predictionHeadToHeadSummary(selectedDriver, matchups) {
     if (!matchups.length) return '';
@@ -1939,28 +1945,44 @@
     const toughest = matchups.slice().sort((first, second) => first.driver1Probability - second.driver1Probability || first.driver2Name.localeCompare(second.driver2Name))[0];
     return '<div class="prediction-h2h-summary"><h4>' + driverLink(selectedDriver, 'record-driver-link') + ' - Head-to-Head Outlook</h4><div><span><b>Favored against:</b> ' + favored + ' drivers</span><span><b>Underdog against:</b> ' + underdog + ' drivers</span><span><b>Even with:</b> ' + even + ' drivers</span><span><b>Closest matchup:</b> ' + escapeHtml(closest.driver2Name) + '</span><span><b>Strongest matchup:</b> ' + escapeHtml(strongest.driver2Name) + '</span><span><b>Toughest matchup:</b> ' + escapeHtml(toughest.driver2Name) + '</span></div></div>';
   }
-  function predictionHeadToHeadTable(matchups, ariaLabel) {
-    return '<div class="table-shell prediction-h2h-table-shell"><table class="profile-table prediction-h2h-table" aria-label="' + ariaLabel + '"><thead><tr><th>Driver 1</th><th class="prediction-h2h-vs-cell" scope="col">VS</th><th>Driver 2</th></tr></thead><tbody>' + (matchups.map((matchup) => '<tr><td>' + predictionHeadToHeadCell(matchup.driver1Name, matchup.driver1Probability, matchup.driver1AmericanOdds, matchup.driver1Status) + '</td><td class="prediction-h2h-vs-cell" aria-label="versus">VS</td><td>' + predictionHeadToHeadCell(matchup.driver2Name, matchup.driver2Probability, matchup.driver2AmericanOdds, matchup.driver2Status) + '</td></tr>').join('') || '<tr><td colspan="3">No eligible matchups are available.</td></tr>') + '</tbody></table></div>';
+  function predictionHeadToHeadHeader(label, key, view) {
+    const activeKey = view === 'all' ? state.predictionH2HAllSortKey : state.predictionH2HDriverSortKey;
+    const direction = view === 'all' ? state.predictionH2HAllSortDirection : state.predictionH2HDriverSortDirection;
+    const active = activeKey === key;
+    return '<th><button class="sort-button" type="button" data-prediction-h2h-sort-key="' + key + '" aria-pressed="' + active + '">' + label + ' <span class="sort-icon" aria-hidden="true">' + (active ? (direction === 'asc' ? '↑' : '↓') : '↕') + '</span></button></th>';
+  }
+  function predictionHeadToHeadSortMenu(view) {
+    const key = view === 'all' ? state.predictionH2HAllSortKey : state.predictionH2HDriverSortKey;
+    const firstLabel = view === 'all' ? 'Driver 1' : 'Selected Driver'; const secondLabel = view === 'all' ? 'Driver 2' : 'Opponent';
+    const option = (value, label) => '<option value="' + value + '"' + (key === value ? ' selected' : '') + '>' + label + '</option>';
+    return '<label><span>Sort table</span><select data-prediction-h2h-sort-select><option value="closeness"' + (key === 'closeness' ? ' selected' : '') + '>Most Even</option>' + option('driver1Name', firstLabel + ' Name') + option('driver1Probability', firstLabel + ' Probability') + option('driver1AmericanOdds', firstLabel + ' American Odds') + option('driver2Name', secondLabel + ' Name') + option('driver2Probability', secondLabel + ' Probability') + option('driver2AmericanOdds', secondLabel + ' American Odds') + '</select></label>';
+  }
+  function predictionHeadToHeadTable(matchups, ariaLabel, view) {
+    const firstLabel = view === 'all' ? 'Driver 1' : 'Selected Driver'; const secondLabel = view === 'all' ? 'Driver 2' : 'Opponent';
+    const headers = predictionHeadToHeadHeader(firstLabel, 'driver1Name', view) + predictionHeadToHeadHeader(firstLabel + ' %', 'driver1Probability', view) + predictionHeadToHeadHeader(firstLabel + ' odds', 'driver1AmericanOdds', view) + '<th class="prediction-h2h-vs-cell" scope="col">VS</th>' + predictionHeadToHeadHeader(secondLabel, 'driver2Name', view) + predictionHeadToHeadHeader(secondLabel + ' %', 'driver2Probability', view) + predictionHeadToHeadHeader(secondLabel + ' odds', 'driver2AmericanOdds', view);
+    const rows = matchups.map((matchup) => '<tr><td class="prediction-h2h-name-cell">' + predictionHeadToHeadCell(matchup.driver1Name, matchup.driver1Probability, matchup.driver1AmericanOdds, matchup.driver1Status) + '</td><td class="prediction-h2h-prob-cell">' + predictionPercent(matchup.driver1Probability) + '</td><td class="prediction-h2h-odds-cell">' + matchup.driver1AmericanOdds + '</td><td class="prediction-h2h-vs-cell" aria-label="versus">VS</td><td class="prediction-h2h-name-cell">' + predictionHeadToHeadCell(matchup.driver2Name, matchup.driver2Probability, matchup.driver2AmericanOdds, matchup.driver2Status) + '</td><td class="prediction-h2h-prob-cell">' + predictionPercent(matchup.driver2Probability) + '</td><td class="prediction-h2h-odds-cell">' + matchup.driver2AmericanOdds + '</td></tr>').join('');
+    return '<div class="table-shell prediction-h2h-table-shell"><table class="profile-table prediction-h2h-table" aria-label="' + ariaLabel + '"><thead><tr>' + headers + '</tr></thead><tbody>' + (rows || '<tr><td colspan="7">No eligible matchups are available.</td></tr>') + '</tbody></table></div>';
   }
   function renderPredictionHeadToHead(season, round) {
     const headToHead = predictionHeadToHeadData(season, round); const names = headToHead.rows.map((row) => row.name).sort((first, second) => first.localeCompare(second));
     const view = state.predictionH2HMode || 'all';
     if (!names.includes(state.predictionH2HDriver)) state.predictionH2HDriver = '';
+    if (!names.includes(state.predictionH2HFilterDriver)) state.predictionH2HFilterDriver = '';
     const viewControls = '<div class="segmented-controls prediction-h2h-view-controls" aria-label="Head-to-head category"><button type="button" data-prediction-h2h-mode="all" aria-pressed="' + (view === 'all') + '">All Matchups</button><button type="button" data-prediction-h2h-mode="driver" aria-pressed="' + (view === 'driver') + '">By Driver</button></div>';
     const note = '<details class="prediction-h2h-note"><summary>How head-to-head odds work</summary><p>Head-to-head odds estimate which of two drivers is more likely to finish ahead in the selected race. They compare both drivers\' finishing positions across the race prediction simulations, not just each driver\'s chance of winning. A driver can have a low chance to win the race but still be favored against a specific opponent.</p></details>';
     if (view === 'all') {
-      const search = (state.predictionH2HSearch || '').trim().toLocaleLowerCase();
-      const all = predictionAllMatchups(headToHead); const filtered = all.filter((matchup) => !search || matchup.driver1Name.toLocaleLowerCase().includes(search) || matchup.driver2Name.toLocaleLowerCase().includes(search));
+      const filterDriver = state.predictionH2HFilterDriver || '';
+      const all = predictionAllMatchups(headToHead); const filtered = all.filter((matchup) => !filterDriver || matchup.driver1Name === filterDriver || matchup.driver2Name === filterDriver);
       const visibleLimit = Math.max(25, state.predictionH2HVisible || 25); const visible = filtered.slice(0, visibleLimit);
-      const toolbar = '<div class="prediction-h2h-toolbar"><label><span>Search driver</span><input type="search" data-prediction-h2h-search value="' + escapeHtml(state.predictionH2HSearch || '') + '" placeholder="Search driver" /></label><label><span>Sort matchups</span><select data-prediction-h2h-all-sort><option value="even"' + ((state.predictionH2HAllSort || 'even') === 'even' ? ' selected' : '') + '>Most Even</option><option value="favorite"' + (state.predictionH2HAllSort === 'favorite' ? ' selected' : '') + '>Biggest Favorite</option><option value="name"' + (state.predictionH2HAllSort === 'name' ? ' selected' : '') + '>Driver Name</option></select></label></div>';
+      const toolbar = '<div class="prediction-h2h-toolbar"><label><span>Choose driver</span><select data-prediction-h2h-filter-driver><option value="">All drivers</option>' + names.map((name) => '<option value="' + escapeHtml(name) + '"' + (name === filterDriver ? ' selected' : '') + '>' + escapeHtml(name) + '</option>').join('') + '</select></label>' + predictionHeadToHeadSortMenu('all') + '</div>';
       const count = '<p class="prediction-h2h-count">Showing ' + visible.length + ' of ' + filtered.length + ' matchups</p>';
       const showMore = filtered.length > visible.length ? '<button class="prediction-h2h-more" type="button" data-prediction-h2h-more>Show more matchups</button>' : '';
-      return '<section class="prediction-panel prediction-h2h-panel"><div class="panel-title"><div><p class="eyebrow">Race forecast</p><h3>Head-to-Head Odds</h3></div><p>Every eligible driver pair is compared across the same 7,000 event-specific race simulations used for the full forecast.</p></div>' + viewControls + note + toolbar + count + predictionHeadToHeadTable(visible, 'All head-to-head matchups') + showMore + '</section>';
+      return '<section class="prediction-panel prediction-h2h-panel"><div class="panel-title"><div><p class="eyebrow">Race forecast</p><h3>Head-to-Head Odds</h3></div><p>Every eligible driver pair is compared across the same 7,000 event-specific race simulations used for the full forecast. Click a column heading to sort.</p></div>' + viewControls + note + toolbar + count + predictionHeadToHeadTable(visible, 'All head-to-head matchups', 'all') + showMore + '</section>';
     }
     const selected = state.predictionH2HDriver; const driverRows = selected ? predictionDriverMatchups(headToHead, selected) : [];
-    const toolbar = '<div class="prediction-h2h-toolbar prediction-h2h-driver-toolbar"><label><span>Choose driver</span><select data-prediction-h2h-driver><option value="">Choose driver</option>' + names.map((name) => '<option value="' + escapeHtml(name) + '"' + (name === selected ? ' selected' : '') + '>' + escapeHtml(name) + '</option>').join('') + '</select></label><label><span>Sort matchups</span><select data-prediction-h2h-driver-sort><option value="even"' + ((state.predictionH2HDriverSort || 'even') === 'even' ? ' selected' : '') + '>Most Even</option><option value="best"' + (state.predictionH2HDriverSort === 'best' ? ' selected' : '') + '>Best Odds for Selected Driver</option><option value="toughest"' + (state.predictionH2HDriverSort === 'toughest' ? ' selected' : '') + '>Toughest Opponent</option><option value="name"' + (state.predictionH2HDriverSort === 'name' ? ' selected' : '') + '>Opponent Name</option></select></label></div>';
-    const body = selected ? predictionHeadToHeadSummary(selected, driverRows) + predictionHeadToHeadTable(driverRows, escapeHtml(selected) + ' head-to-head matchups') : '<p class="no-profile">Choose a driver to compare their odds against every other eligible driver in this round.</p>';
-    return '<section class="prediction-panel prediction-h2h-panel"><div class="panel-title"><div><p class="eyebrow">Race forecast</p><h3>Head-to-Head Odds</h3></div><p>Each matchup uses the selected round\'s track, car-category, recent-form, and career inputs.</p></div>' + viewControls + note + toolbar + body + '</section>';
+    const toolbar = '<div class="prediction-h2h-toolbar prediction-h2h-driver-toolbar"><label><span>Choose driver</span><select data-prediction-h2h-driver><option value="">Choose driver</option>' + names.map((name) => '<option value="' + escapeHtml(name) + '"' + (name === selected ? ' selected' : '') + '>' + escapeHtml(name) + '</option>').join('') + '</select></label>' + predictionHeadToHeadSortMenu('driver') + '</div>';
+    const body = selected ? predictionHeadToHeadSummary(selected, driverRows) + predictionHeadToHeadTable(driverRows, escapeHtml(selected) + ' head-to-head matchups', 'driver') : '<p class="no-profile">Choose a driver to compare their odds against every other eligible driver in this round.</p>';
+    return '<section class="prediction-panel prediction-h2h-panel"><div class="panel-title"><div><p class="eyebrow">Race forecast</p><h3>Head-to-Head Odds</h3></div><p>Each matchup uses the selected round\'s track, car-category, recent-form, and career inputs. Click a column heading to sort.</p></div>' + viewControls + note + toolbar + body + '</section>';
   }
   function renderPredictions() {
     if (!elements.predictionsContent) return;
@@ -1995,14 +2017,20 @@
   setupEnhancedArchive();
   Object.assign(state, {
     predictionMode: 'championship', predictionRoundIndex: 0, predictionSortKey: 'championshipProbability', predictionSortDirection: 'desc',
-    predictionRaceView: 'full', predictionH2HMode: 'all', predictionH2HAllSort: 'even', predictionH2HDriverSort: 'even', predictionH2HDriver: '', predictionH2HSearch: '', predictionH2HVisible: 25
+    predictionRaceView: 'full', predictionH2HMode: 'all', predictionH2HAllSortKey: 'closeness', predictionH2HAllSortDirection: 'asc', predictionH2HDriverSortKey: 'closeness', predictionH2HDriverSortDirection: 'asc', predictionH2HDriver: '', predictionH2HFilterDriver: '', predictionH2HVisible: 25
   });
   elements.predictionsContent = document.querySelector('#predictions-content');
   elements.predictionsContent?.addEventListener('click', (event) => {
-    const mode = event.target.closest('[data-prediction-mode]'); const raceView = event.target.closest('[data-prediction-race-view]'); const headToHeadMode = event.target.closest('[data-prediction-h2h-mode]'); const showMore = event.target.closest('[data-prediction-h2h-more]'); const sort = event.target.closest('[data-prediction-sort-key]');
+    const mode = event.target.closest('[data-prediction-mode]'); const raceView = event.target.closest('[data-prediction-race-view]'); const headToHeadMode = event.target.closest('[data-prediction-h2h-mode]'); const headToHeadSort = event.target.closest('[data-prediction-h2h-sort-key]'); const showMore = event.target.closest('[data-prediction-h2h-more]'); const sort = event.target.closest('[data-prediction-sort-key]');
     if (mode) { state.predictionMode = mode.dataset.predictionMode; state.predictionSortKey = mode.dataset.predictionMode === 'race' ? 'winProbability' : 'championshipProbability'; state.predictionSortDirection = 'desc'; renderPredictions(); return; }
     if (raceView) { state.predictionRaceView = raceView.dataset.predictionRaceView; renderPredictions(); return; }
     if (headToHeadMode) { state.predictionH2HMode = headToHeadMode.dataset.predictionH2hMode; renderPredictions(); return; }
+    if (headToHeadSort) {
+      const key = headToHeadSort.dataset.predictionH2hSortKey; const isAll = state.predictionH2HMode === 'all'; const currentKey = isAll ? state.predictionH2HAllSortKey : state.predictionH2HDriverSortKey; const currentDirection = isAll ? state.predictionH2HAllSortDirection : state.predictionH2HDriverSortDirection;
+      const direction = currentKey === key ? (currentDirection === 'asc' ? 'desc' : 'asc') : predictionH2HDefaultDirection(key);
+      if (isAll) { state.predictionH2HAllSortKey = key; state.predictionH2HAllSortDirection = direction; state.predictionH2HVisible = 25; } else { state.predictionH2HDriverSortKey = key; state.predictionH2HDriverSortDirection = direction; }
+      renderPredictions(); return;
+    }
     if (showMore) { state.predictionH2HVisible = (state.predictionH2HVisible || 25) + 25; renderPredictions(); return; }
     if (!sort) return;
     const key = sort.dataset.predictionSortKey;
@@ -2012,19 +2040,17 @@
   elements.predictionsContent?.addEventListener('change', (event) => {
     const season = getSeason();
     if (event.target.matches('[data-prediction-round-select]')) {
-      state.predictionRoundIndex = Number(event.target.value); state.predictionSortKey = 'winProbability'; state.predictionSortDirection = 'desc'; state.predictionH2HAllSort = 'even'; state.predictionH2HDriverSort = 'even'; state.predictionH2HSearch = ''; state.predictionH2HVisible = 25;
+      state.predictionRoundIndex = Number(event.target.value); state.predictionSortKey = 'winProbability'; state.predictionSortDirection = 'desc'; state.predictionH2HAllSortKey = 'closeness'; state.predictionH2HAllSortDirection = 'asc'; state.predictionH2HDriverSortKey = 'closeness'; state.predictionH2HDriverSortDirection = 'asc'; state.predictionH2HFilterDriver = ''; state.predictionH2HVisible = 25;
       const eligible = predictionDrivers(season); if (!eligible.includes(state.predictionH2HDriver)) state.predictionH2HDriver = '';
       renderPredictions(); return;
     }
-    if (event.target.matches('[data-prediction-h2h-all-sort]')) { state.predictionH2HAllSort = event.target.value; state.predictionH2HVisible = 25; renderPredictions(); return; }
-    if (event.target.matches('[data-prediction-h2h-driver-sort]')) { state.predictionH2HDriverSort = event.target.value; renderPredictions(); return; }
-    if (event.target.matches('[data-prediction-h2h-driver]')) { state.predictionH2HDriver = event.target.value; state.predictionH2HDriverSort = 'even'; renderPredictions(); }
-  });
-  elements.predictionsContent?.addEventListener('input', (event) => {
-    if (!event.target.matches('[data-prediction-h2h-search]')) return;
-    state.predictionH2HSearch = event.target.value; state.predictionH2HVisible = 25; renderPredictions();
-    const search = elements.predictionsContent.querySelector('[data-prediction-h2h-search]');
-    if (search) { search.focus(); search.setSelectionRange(search.value.length, search.value.length); }
+    if (event.target.matches('[data-prediction-h2h-filter-driver]')) { state.predictionH2HFilterDriver = event.target.value; state.predictionH2HVisible = 25; renderPredictions(); return; }
+    if (event.target.matches('[data-prediction-h2h-sort-select]')) {
+      const key = event.target.value; const isAll = state.predictionH2HMode === 'all';
+      if (isAll) { state.predictionH2HAllSortKey = key; state.predictionH2HAllSortDirection = predictionH2HDefaultDirection(key); state.predictionH2HVisible = 25; } else { state.predictionH2HDriverSortKey = key; state.predictionH2HDriverSortDirection = predictionH2HDefaultDirection(key); }
+      renderPredictions(); return;
+    }
+    if (event.target.matches('[data-prediction-h2h-driver]')) { state.predictionH2HDriver = event.target.value; state.predictionH2HDriverSortKey = 'closeness'; state.predictionH2HDriverSortDirection = 'asc'; renderPredictions(); }
   });
   renderPointsSystem(); renderSeason(); renderProfileSelector(); renderDriverProfile(); renderRecords();
 })();
