@@ -1521,40 +1521,104 @@
   function predictionCarTypeScore(bundle) {
     return bundle.finish * 0.45 + bundle.qualifying * 0.20 + bundle.wins * 0.15 + bundle.podiums * 0.10 + bundle.lapsLed * 0.05 + bundle.fastestLaps * 0.05;
   }
-  function predictionHistoryConfidence(starts) {
-    if (starts >= 4) return 1;
-    if (starts === 3) return 0.88;
-    if (starts === 2) return 0.78;
-    if (starts === 1) return 0.65;
-    return 0;
+  function predictionTwoWayFallbackWeights(starts) {
+    if (starts >= 4) return { exact: 1, fallback: 0, recent: 0, career: 0 };
+    if (starts === 3) return { exact: 0.88, fallback: 0.10, recent: 0.02, career: 0 };
+    if (starts === 2) return { exact: 0.78, fallback: 0.19, recent: 0.03, career: 0 };
+    if (starts === 1) return { exact: 0.65, fallback: 0.30, recent: 0.04, career: 0.01 };
+    return { exact: 0, fallback: 0.85, recent: 0.10, career: 0.05 };
   }
-  function predictionContextRating(entries, careerScore, selector, scoreFunction) {
+  function predictionRawContext(entries, selector, scoreFunction) {
     const matched = entries.filter(selector).filter((entry) => enhResultHasFinish(entry));
     const bundle = predictionMetricBundle(matched);
-    const confidence = predictionHistoryConfidence(bundle.starts);
-    const matchingScore = scoreFunction(bundle);
+    return { entries: matched, bundle, starts: bundle.starts, score: scoreFunction(bundle) };
+  }
+  function predictionIndependentFallback(entries, selector, overlapSelector, scoreFunction) {
+    const raw = entries.filter(selector).filter((entry) => enhResultHasFinish(entry));
+    const independent = raw.filter((entry) => !overlapSelector(entry));
+    const rawBundle = predictionMetricBundle(raw);
+    const overlapOnly = raw.length > 0 && independent.length === 0;
+    const bundle = predictionMetricBundle(independent.length ? independent : raw);
     return {
+      rawBundle,
+      rawScore: scoreFunction(rawBundle),
       bundle,
-      confidence,
-      matchingScore,
-      score: confidence ? matchingScore * confidence + careerScore * (1 - confidence) : careerScore
+      score: scoreFunction(bundle),
+      starts: bundle.starts,
+      rawStarts: rawBundle.starts,
+      overlapStarts: rawBundle.starts - independent.length,
+      overlapOnly,
+      available: rawBundle.starts > 0
     };
   }
-  function predictionContextMetric(context, careerBundle, key) {
-    return context.confidence ? context.bundle[key] * context.confidence + careerBundle[key] * (1 - context.confidence) : careerBundle[key];
+  function predictionBlendWeights(baseWeights, availability) {
+    const weights = { ...baseWeights, neutral: 0 };
+    const distribute = (amount, destinations) => {
+      const availableDestinations = destinations.filter((key) => availability[key]);
+      if (!availableDestinations.length) { weights.neutral += amount; return; }
+      const basis = availableDestinations.reduce((total, key) => total + (baseWeights[key] || 1), 0);
+      availableDestinations.forEach((key) => { weights[key] += amount * ((baseWeights[key] || 1) / basis); });
+    };
+    if (weights.fallback && !availability.fallback) { const amount = weights.fallback; weights.fallback = 0; distribute(amount, ['recent', 'career']); }
+    if (weights.recent && !availability.recent) { const amount = weights.recent; weights.recent = 0; distribute(amount, ['career']); }
+    if (weights.career && !availability.career) { const amount = weights.career; weights.career = 0; distribute(amount, ['recent']); }
+    return weights;
+  }
+  function predictionRedistributeToRelevant(weights, amount, availability, baseWeights) {
+    const targets = ['recent', 'career'].filter((key) => availability[key]);
+    if (!targets.length) { weights.neutral += amount; return; }
+    const basis = targets.reduce((total, key) => total + (baseWeights[key] || 0), 0);
+    if (!basis) { weights[targets[0]] += amount; return; }
+    targets.forEach((key) => { weights[key] += amount * (baseWeights[key] || 0) / basis; });
+  }
+  function predictionContextRating(exact, fallback, recent, all, careerScore) {
+    const availability = {
+      exact: exact.starts > 0,
+      fallback: fallback.available,
+      recent: recent.starts > 0,
+      career: all.starts > 0
+    };
+    const baseWeights = predictionTwoWayFallbackWeights(exact.starts);
+    const weights = predictionBlendWeights(baseWeights, availability);
+    // If every fallback race overlaps the exact sample, retain the raw fallback
+    // score but cap the combined exact evidence at one source's weight. The
+    // released weight goes to recent/career form instead of counting the same race twice.
+    if (fallback.overlapOnly && weights.exact && weights.fallback) {
+      const combined = weights.exact + weights.fallback;
+      const retained = Math.max(weights.exact, weights.fallback);
+      const scale = retained / combined;
+      weights.exact *= scale;
+      weights.fallback *= scale;
+      predictionRedistributeToRelevant(weights, combined - retained, availability, baseWeights);
+    }
+    const recentScore = predictionComposite(recent);
+    const score = exact.score * weights.exact + fallback.score * weights.fallback + recentScore * weights.recent + careerScore * weights.career + 0.5 * weights.neutral;
+    return { bundle: exact.bundle, starts: exact.starts, rawScore: exact.score, fallback, recent, all, score, sourceWeights: weights };
+  }
+  function predictionContextMetric(context, key) {
+    const weights = context.sourceWeights;
+    return context.bundle[key] * weights.exact + context.fallback.bundle[key] * weights.fallback + context.recent[key] * weights.recent + context.all[key] * weights.career + 0.5 * weights.neutral;
   }
   function predictionDriverRating(name, race, season, includeCurrentSeason = true) {
     const entries = predictionEntries(name, season, includeCurrentSeason);
     const started = entries.filter((entry) => enhResultHasFinish(entry));
     const all = predictionMetricBundle(started);
-    const recent = predictionMetricBundle(started.slice(-8));
+    const recent = predictionMetricBundle(started.slice(-5));
     const career = predictionComposite(all);
     const recentScore = predictionComposite(recent);
-    const track = predictionContextRating(entries, career, (entry) => enhTrackName(entry.race) === enhTrackName(race), predictionTrackScore);
-    const carType = predictionContextRating(entries, career, (entry) => getCarClass(entry.race) === getCarClass(race), predictionCarTypeScore);
+    const atTrack = (entry) => enhTrackName(entry.race) === enhTrackName(race);
+    const inCarType = (entry) => getCarClass(entry.race) === getCarClass(race);
+    const exactTrack = predictionRawContext(entries, atTrack, predictionTrackScore);
+    const exactCarType = predictionRawContext(entries, inCarType, predictionCarTypeScore);
+    // The fallback samples exclude race results already represented by the exact source.
+    // The two final ratings only ever read these raw, independent samples, never each other.
+    const trackFallback = predictionIndependentFallback(entries, inCarType, atTrack, predictionCarTypeScore);
+    const carTypeFallback = predictionIndependentFallback(entries, atTrack, inCarType, predictionTrackScore);
+    const track = predictionContextRating(exactTrack, trackFallback, recent, all, career);
+    const carType = predictionContextRating(exactCarType, carTypeFallback, recent, all, career);
     const rating = (track.score * 0.35 + carType.score * 0.30 + recentScore * 0.20 + career * 0.15) * 100;
-    const qualifyingSkill = predictionContextMetric(track, all, 'qualifying') * 0.35 + predictionContextMetric(carType, all, 'qualifying') * 0.30 + recent.qualifying * 0.20 + all.qualifying * 0.15;
-    const fastestLapSkill = (predictionContextMetric(track, all, 'fastestLaps') * 0.35 + predictionContextMetric(carType, all, 'fastestLaps') * 0.30 + recent.fastestLaps * 0.20 + all.fastestLaps * 0.15) * 0.72 + (predictionContextMetric(track, all, 'lapsLed') * 0.35 + predictionContextMetric(carType, all, 'lapsLed') * 0.30 + recent.lapsLed * 0.20 + all.lapsLed * 0.15) * 0.28;
+    const qualifyingSkill = predictionContextMetric(track, 'qualifying') * 0.35 + predictionContextMetric(carType, 'qualifying') * 0.30 + recent.qualifying * 0.20 + all.qualifying * 0.15;
+    const fastestLapSkill = (predictionContextMetric(track, 'fastestLaps') * 0.35 + predictionContextMetric(carType, 'fastestLaps') * 0.30 + recent.fastestLaps * 0.20 + all.fastestLaps * 0.15) * 0.72 + (predictionContextMetric(track, 'lapsLed') * 0.35 + predictionContextMetric(carType, 'lapsLed') * 0.30 + recent.lapsLed * 0.20 + all.lapsLed * 0.15) * 0.28;
     return {
       name,
       rating: predictionClamp(rating, 0, 100),
@@ -1715,7 +1779,7 @@
     if (state.predictionRoundIndex < 0) state.predictionRoundIndex = 0;
     const mode = state.predictionMode || 'championship';
     const controls = '<div class="prediction-controls"><div class="segmented-controls" aria-label="Prediction view"><button type="button" data-prediction-mode="championship" aria-pressed="' + (mode === 'championship') + '">Championship predictions</button><button type="button" data-prediction-mode="race" aria-pressed="' + (mode === 'race') + '">Race predictions</button></div>' + (mode === 'race' ? '<label class="round-picker prediction-round-picker"><span>Choose round</span><select data-prediction-round-select>' + rounds.map((round, index) => '<option value="' + index + '"' + (index === state.predictionRoundIndex ? ' selected' : '') + '>Round ' + (index + 1) + ' — ' + escapeHtml(round.race.name || 'TBC') + (predictionCompletedRound(season, round) ? ' (complete)' : '') + '</option>').join('') + '</select></label>' : '') + '</div>';
-    const retired = '<p class="prediction-disclaimer">Event ratings use track history (35%), car-type history (30%), recent form from the last eight starts (20%), and career performance (15%). Track and car history use the stated sample-size confidence levels. Trevor Levine, Nick Collier, and YattMan are excluded. American odds are model-style displays, not betting lines.</p>';
+    const retired = '<p class="prediction-disclaimer">Event ratings use track history (35%), car-type history (30%), recent form from the last five completed starts (20%), and career performance (15%). Low-sample track and car ratings lean first on the other raw, non-overlapping event history; missing data then shifts to recent form and career only when needed. Trevor Levine, Nick Collier, and YattMan are excluded. American odds are model-style displays, not betting lines.</p>';
     if (mode === 'race') {
       const round = rounds[state.predictionRoundIndex];
       if (predictionCompletedRound(season, round)) {
