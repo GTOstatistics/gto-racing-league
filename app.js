@@ -1289,7 +1289,7 @@
       progressionMode: 'all', progressionSelected: new Set(), profileTab: 'overview', profileRaceSeason: null,
       profileTrackSortKey: 'track', profileTrackSortDirection: 'asc', compareSeason: 'all', extraSorts: {}, specialRecordFilter: 'all', didYouKnowIndex: null, didYouKnowTimer: null,
       roundSortKey: 'position', roundSortDirection: 'asc', standingsMode: 'drops', powerRankingsMode: 'season',
-      powerSeasonSortKey: 'overall', powerSeasonSortDirection: 'desc', powerRaceSortKey: 'overall', powerRaceSortDirection: 'desc'
+      powerSeasonSortKey: 'seasonOverall', powerSeasonSortDirection: 'desc', powerRaceSortKey: 'overall', powerRaceSortDirection: 'desc'
     });
     Object.assign(elements, {
       progressionControls: document.querySelector('#progression-controls'), progressionChart: document.querySelector('#progression-chart'),
