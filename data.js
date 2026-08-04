@@ -23,7 +23,7 @@ window.GTO_DATA.seasons.push({
     { name: 'Daytona 50.0 (Drafting)', label: 'Race 1' },
     { name: 'Barcelona Rallycross (Dirt)', label: 'Race 2' },
     { name: 'Barcelona (Formula)', label: 'Race 3' },
-    { name: 'Bathurst (Gr.3)', label: 'Race 4' },
+    { name: 'Mount Panorama (Radicals)', label: 'Race 4' },
     { name: 'Road Atlanta (E36 BMW M3)', label: 'Spec 3 at Road Atlanta' },
     { name: 'Hour at LeMans (Gr.1)', label: 'The Hour of LeMans' },
     { name: 'Miyabi (Karts)', label: 'Race 7' },
