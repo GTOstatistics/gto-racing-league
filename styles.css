@@ -280,6 +280,7 @@ tbody tr:hover { background: #fbfcfe; }
 .predictions-content { width: fit-content; max-width: 100%; }
 .prediction-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; margin-bottom: 18px; }
 .prediction-round-picker { margin-left: auto; }
+.prediction-race-view-controls { flex-basis: 100%; }
 .prediction-panel { width: fit-content; max-width: 100%; margin-bottom: 20px; padding: 24px; border: 1px solid var(--ink); background: var(--card); box-shadow: var(--shadow); }
 .prediction-panel .panel-title { margin-bottom: 18px; }
 .prediction-panel .panel-title > p { max-width: 470px; }
@@ -292,6 +293,33 @@ tbody tr:hover { background: #fbfcfe; }
 .prediction-explanation-copy p { margin: 0 0 6px; }
 .prediction-explanation-copy p:last-child { margin-bottom: 0; }
 .prediction-disclaimer { width: fit-content; max-width: 760px; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+.prediction-h2h-panel { width: min(860px, 100%); }
+.prediction-h2h-view-controls { margin-bottom: 12px; }
+.prediction-h2h-note { margin: 0 0 16px; color: var(--muted); font-size: 11px; line-height: 1.55; }
+.prediction-h2h-note summary { width: fit-content; color: var(--blue); cursor: pointer; font-weight: 900; }
+.prediction-h2h-note p { max-width: 680px; margin: 8px 0 0; }
+.prediction-h2h-toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-bottom: 12px; }
+.prediction-h2h-toolbar label { display: grid; gap: 6px; min-width: 180px; color: #677182; font-size: 9px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.prediction-h2h-toolbar input, .prediction-h2h-toolbar select { min-height: 38px; border: 1px solid var(--line); border-radius: 0; background: white; color: var(--ink); font: inherit; letter-spacing: 0; text-transform: none; }
+.prediction-h2h-toolbar input { padding: 0 10px; }
+.prediction-h2h-toolbar select { padding: 0 8px; }
+.prediction-h2h-count { margin: 0 0 9px; color: var(--muted); font-size: 11px; font-weight: 750; }
+.prediction-h2h-table-shell { width: 100%; }
+.prediction-h2h-table.profile-table { width: 100%; min-width: 620px; }
+.prediction-h2h-table th, .prediction-h2h-table td { white-space: normal; }
+.prediction-h2h-vs-cell { width: 54px; color: var(--blue); font-size: 10px !important; font-weight: 950 !important; letter-spacing: .1em; text-align: center !important; }
+.prediction-h2h-driver { display: grid; gap: 4px; min-width: 210px; }
+.prediction-h2h-driver strong { line-height: 1.25; }
+.prediction-h2h-driver span { color: var(--blue); font-size: 14px; font-weight: 950; }
+.prediction-h2h-driver span b { color: #7d8794; }
+.prediction-h2h-driver small { color: #657184; font-size: 9px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.prediction-h2h-more { margin-top: 12px; padding: 9px 12px; border: 1px solid var(--blue); background: white; color: var(--blue); cursor: pointer; font-size: 11px; font-weight: 900; }
+.prediction-h2h-more:hover { background: #edf2ff; }
+.prediction-h2h-summary { margin: 0 0 15px; padding: 15px; border-left: 4px solid var(--blue); background: #edf2ff; }
+.prediction-h2h-summary h4 { margin: 0 0 10px; font-size: 16px; letter-spacing: -.03em; }
+.prediction-h2h-summary > div { display: flex; flex-wrap: wrap; gap: 7px 16px; }
+.prediction-h2h-summary span { color: #536074; font-size: 11px; line-height: 1.4; }
+.prediction-h2h-summary b { color: var(--ink); }
 .power-rankings-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; margin-bottom: 18px; }
 .power-round-picker { margin-left: auto; }
 .power-ranking-panel { padding: 24px; border: 1px solid var(--ink); background: var(--card); box-shadow: var(--shadow); }
@@ -417,6 +445,21 @@ tbody tr:hover { background: #fbfcfe; }
   .prediction-round-picker { margin-left: 0; }
   .prediction-panel { padding: 16px; }
   .prediction-table { min-width: 950px; }
+  .prediction-race-view-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .prediction-race-view-controls button { min-width: 0; }
+  .prediction-h2h-panel { width: 100%; }
+  .prediction-h2h-toolbar { display: grid; grid-template-columns: 1fr; }
+  .prediction-h2h-toolbar label { min-width: 0; }
+  .prediction-h2h-toolbar input, .prediction-h2h-toolbar select { width: 100%; }
+  .prediction-h2h-table.profile-table { width: 100%; min-width: 0; table-layout: fixed; }
+  .prediction-h2h-table th, .prediction-h2h-table td { padding: 10px 7px; }
+  .prediction-h2h-vs-cell { width: 34px; padding-left: 2px !important; padding-right: 2px !important; font-size: 8px !important; }
+  .prediction-h2h-driver { min-width: 0; gap: 3px; }
+  .prediction-h2h-driver strong { font-size: 11px; overflow-wrap: anywhere; }
+  .prediction-h2h-driver span { font-size: 12px; white-space: nowrap; }
+  .prediction-h2h-driver small { font-size: 8px; }
+  .prediction-h2h-summary { padding: 12px; }
+  .prediction-h2h-summary > div { display: grid; gap: 6px; }
   .power-ranking-panel { padding: 16px; }
   .power-rankings-table { min-width: 820px; }
   .result-sort-controls { display: grid; align-items: start; gap: 7px; }
