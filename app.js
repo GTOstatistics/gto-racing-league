@@ -437,6 +437,7 @@
     const compact = raw.toLowerCase().replace(/[^a-z0-9]+/g, '');
     if (compact === 'lemans' || compact === 'houratlemans' || compact === 'houroflemans') return 'Le Mans';
     if (compact === 'daytonarc' || compact === 'daytonaroadcourse') return 'Daytona Road Course';
+    if (compact === 'bathurst' || compact === 'mountpanorama') return 'Mount Panorama';
     if (/n.rburgring/i.test(raw) || /^gr\.?\s*3\s+n/i.test(raw)) return 'Nurburgring';
     return raw || 'TBC';
   }
@@ -1616,9 +1617,9 @@
     const carTypeFallback = predictionIndependentFallback(entries, atTrack, inCarType, predictionTrackScore);
     const track = predictionContextRating(exactTrack, trackFallback, recent, all, career);
     const carType = predictionContextRating(exactCarType, carTypeFallback, recent, all, career);
-    const rating = (track.score * 0.35 + carType.score * 0.30 + recentScore * 0.20 + career * 0.15) * 100;
-    const qualifyingSkill = predictionContextMetric(track, 'qualifying') * 0.35 + predictionContextMetric(carType, 'qualifying') * 0.30 + recent.qualifying * 0.20 + all.qualifying * 0.15;
-    const fastestLapSkill = (predictionContextMetric(track, 'fastestLaps') * 0.35 + predictionContextMetric(carType, 'fastestLaps') * 0.30 + recent.fastestLaps * 0.20 + all.fastestLaps * 0.15) * 0.72 + (predictionContextMetric(track, 'lapsLed') * 0.35 + predictionContextMetric(carType, 'lapsLed') * 0.30 + recent.lapsLed * 0.20 + all.lapsLed * 0.15) * 0.28;
+    const rating = (track.score * 0.40 + carType.score * 0.40 + recentScore * 0.10 + career * 0.10) * 100;
+    const qualifyingSkill = predictionContextMetric(track, 'qualifying') * 0.40 + predictionContextMetric(carType, 'qualifying') * 0.40 + recent.qualifying * 0.10 + all.qualifying * 0.10;
+    const fastestLapSkill = (predictionContextMetric(track, 'fastestLaps') * 0.40 + predictionContextMetric(carType, 'fastestLaps') * 0.40 + recent.fastestLaps * 0.10 + all.fastestLaps * 0.10) * 0.72 + (predictionContextMetric(track, 'lapsLed') * 0.40 + predictionContextMetric(carType, 'lapsLed') * 0.40 + recent.lapsLed * 0.10 + all.lapsLed * 0.10) * 0.28;
     return {
       name,
       rating: predictionClamp(rating, 0, 100),
@@ -1632,10 +1633,10 @@
       qualifyingSkill,
       fastestLapSkill,
       contributions: {
-        track: track.score * 35,
-        carType: carType.score * 30,
-        recent: recentScore * 20,
-        career: career * 15
+        track: track.score * 40,
+        carType: carType.score * 40,
+        recent: recentScore * 10,
+        career: career * 10
       }
     };
   }
@@ -1779,7 +1780,7 @@
     if (state.predictionRoundIndex < 0) state.predictionRoundIndex = 0;
     const mode = state.predictionMode || 'championship';
     const controls = '<div class="prediction-controls"><div class="segmented-controls" aria-label="Prediction view"><button type="button" data-prediction-mode="championship" aria-pressed="' + (mode === 'championship') + '">Championship predictions</button><button type="button" data-prediction-mode="race" aria-pressed="' + (mode === 'race') + '">Race predictions</button></div>' + (mode === 'race' ? '<label class="round-picker prediction-round-picker"><span>Choose round</span><select data-prediction-round-select>' + rounds.map((round, index) => '<option value="' + index + '"' + (index === state.predictionRoundIndex ? ' selected' : '') + '>Round ' + (index + 1) + ' — ' + escapeHtml(round.race.name || 'TBC') + (predictionCompletedRound(season, round) ? ' (complete)' : '') + '</option>').join('') + '</select></label>' : '') + '</div>';
-    const retired = '<p class="prediction-disclaimer">Event ratings use track history (35%), car-type history (30%), recent form from the last five completed starts (20%), and career performance (15%). Low-sample track and car ratings lean first on the other raw, non-overlapping event history; missing data then shifts to recent form and career only when needed. Trevor Levine, Nick Collier, and YattMan are excluded. American odds are model-style displays, not betting lines.</p>';
+    const retired = '<p class="prediction-disclaimer">Event ratings use track history (40%), car-type history (40%), recent form from the last five completed starts (10%), and career performance (10%). Low-sample track and car ratings lean first on the other raw, non-overlapping event history; missing data then shifts to recent form and career only when needed. Trevor Levine, Nick Collier, and YattMan are excluded. American odds are model-style displays, not betting lines.</p>';
     if (mode === 'race') {
       const round = rounds[state.predictionRoundIndex];
       if (predictionCompletedRound(season, round)) {
