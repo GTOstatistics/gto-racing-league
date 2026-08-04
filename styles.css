@@ -518,6 +518,13 @@ tbody tr:hover { background: #fbfcfe; }
   .mini-table-shell > table { width: max-content; }
 }
 
+/* Keep the two-sided matchup view within the phone viewport. */
+@media (max-width: 620px) {
+  .prediction-h2h-panel.prediction-panel,
+  .prediction-h2h-table-shell.table-shell { width: 100%; }
+  .prediction-h2h-table.profile-table { width: 100%; min-width: 0; table-layout: fixed; }
+}
+
 /* Tappable links that keep profile tables visually compact. */
 .profile-jump-link {
   padding: 0;
