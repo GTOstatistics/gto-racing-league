@@ -1195,7 +1195,7 @@
   }
   function getSeasonRaceAverageRows(season) {
     const rounds = getArchiveRounds(season);
-    const scheduledRaces = season.races.length;
+    const scheduledRaces = season.id === '1' ? rounds.length : season.races.length;
     const raceRankings = new Map(rounds.map((round) => [round.index, new Map(getRacePowerRankings(season, round).map((row) => [row.name, row]))]));
     return season.drivers.map((driver) => {
       const startedRounds = rounds.filter(({ index }) => enhResultHasFinish(driver.results[index]));
@@ -1283,7 +1283,7 @@
     if (!state.powerRankingsMode) state.powerRankingsMode = 'season';
     const mode = state.powerRankingsMode;
     const round = rounds[state.roundIndex];
-    const metrics = mode === 'season' ? ['starts', 'averageRaceOverall', 'participationFactor', 'adjustedAverage', 'seasonOverall'] : ['overall', 'finish', 'qualifying', 'lapsLed', 'movement', 'fastestLaps'];
+    const metrics = mode === 'season' ? ['seasonOverall', 'averageRaceOverall', 'participationFactor', 'adjustedAverage', 'starts'] : ['overall', 'finish', 'qualifying', 'lapsLed', 'movement', 'fastestLaps'];
     const rankings = mode === 'season' ? getSeasonPowerRankings(season) : getRacePowerRankings(season, round);
     const rows = sortPowerRankings(rankings, mode);
     const roundPicker = mode === 'race' ? '<label class="round-picker power-round-picker"><span>Choose round</span><select data-power-round-select>' + rounds.map(({ race }, index) => '<option value="' + index + '"' + (index === state.roundIndex ? ' selected' : '') + '>Round ' + (index + 1) + ' — ' + escapeHtml(race.name || 'TBC') + '</option>').join('') + '</select></label>' : '';
