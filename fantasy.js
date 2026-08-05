@@ -14,7 +14,11 @@
     view: 'home', account: null, rounds: [], currentRound: null, tiers: [], lineup: null, previousLineup: null,
     selected: {}, history: [], standings: [], profiles: [], weekResults: [], resultsRoundId: '', settings: null,
     notice: '', error: '', recoveryCode: '', adminSession: sessionStorage.getItem('gto-fantasy-admin-session') || '',
-    adminPreview: [], adminRoundIndex: 0, adminPlayers: [], adminAudit: []
+    adminPreview: [], adminRoundIndex: 0, adminPlayers: [], adminAudit: [],
+    sort: {
+      weekly: { key: 'rank', direction: 'asc' },
+      standings: { key: 'counting_points', direction: 'desc' }
+    }
   };
 
   const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
@@ -52,6 +56,21 @@
   const weightPercent = (value) => `${(safeNumber(value) * 100).toFixed(0)}%`;
   const selectedRound = () => state.currentRound ? roundByIndex(state.currentRound.race_index) : null;
   const config = () => state.settings || { standings_weight: .5, prediction_weight: .5, previous_standings_through_round: 3, season_drops: 3, consecutive_driver_restriction: true };
+  const sortHeader = (scope, label, key) => {
+    const active = state.sort[scope].key === key;
+    const arrow = active ? (state.sort[scope].direction === 'asc' ? '↑' : '↓') : '↕';
+    return `<th><button class="sort-button" type="button" data-fantasy-sort-scope="${scope}" data-fantasy-sort-key="${key}" aria-pressed="${active}">${label} <span class="sort-icon" aria-hidden="true">${arrow}</span></button></th>`;
+  };
+  function sortedFantasyRows(rows, scope, valueFor) {
+    const { key, direction } = state.sort[scope];
+    const multiplier = direction === 'asc' ? 1 : -1;
+    return rows.map((row, index) => ({ row, index })).sort((left, right) => {
+      const a = valueFor(left.row, key, left.index); const b = valueFor(right.row, key, right.index);
+      const numeric = Number(a); const numericB = Number(b);
+      const compare = Number.isFinite(numeric) && Number.isFinite(numericB) ? numeric - numericB : String(a ?? '').localeCompare(String(b ?? ''), undefined, { numeric: true, sensitivity: 'base' });
+      return compare * multiplier || left.index - right.index;
+    }).map((entry) => entry.row);
+  }
 
   function sourceResults(index) {
     const sourceSeason = activeSeason();
@@ -202,11 +221,33 @@
   function renderResults() {
     const scored = state.rounds.filter((row) => row.status === 'scored').sort((a, b) => Number(a.race_index) - Number(b.race_index));
     if (!scored.length) return `<section class="fantasy-panel"><div class="panel-title"><div><p class="eyebrow">Official scoring</p><h3>Weekly Results</h3></div><p>Fantasy scoring appears only after the official GTO result is finalized. No live or provisional scores are displayed.</p></div>${noData('No Fantasy League week has been finalized yet.')}</section>`;
-    return `<section class="fantasy-panel"><div class="panel-title"><div><p class="eyebrow">Official scoring</p><h3>Weekly Results</h3></div><p>Each driver total includes finishing points and all earned bonuses. Weekly championship points determine the season standings.</p></div><label class="fantasy-select-label">Choose scored round<select data-fantasy-results-round>${scored.map((round) => `<option value="${round.id}" ${round.id === state.resultsRoundId ? 'selected' : ''}>Season ${round.season_id} — Round ${Number(round.race_index) + 1}: ${esc(round.race_name)}</option>`).join('')}</select></label>${state.weekResults.length ? `<div class="table-shell"><table class="profile-table fantasy-table"><thead><tr><th>Rank</th><th>Player</th><th>Tier 1</th><th>Tier 2</th><th>Tier 3</th><th>Raw Score</th><th>Champ. Pts</th></tr></thead><tbody>${state.weekResults.map((row) => `<tr><td>P${row.weekly_rank}</td><td><strong>${esc(row.player)}</strong></td>${[1, 2, 3].map((tier) => { const driver = (row.drivers || []).find((item) => Number(item.tier) === tier); const bonuses = driver ? [['Win', driver.win_bonus], ['Podium', driver.podium_bonus], ['Pole', driver.pole_bonus], ['FL', driver.fastest_lap_bonus], ['Led', driver.led_a_lap_bonus], ['Most Led', driver.most_laps_led_bonus], ['Move', driver.movement_bonus]].filter(([, value]) => safeNumber(value) > 0).map(([label, value]) => `${label} +${value}`).join(', ') : ''; return `<td><strong>${esc(driver?.driver_name || dash)}</strong><small class="fantasy-score-detail">P${driver?.finishing_position || dash} · ${driver?.total_score ?? dash}${bonuses ? `<br>${esc(bonuses)}` : ''}</small></td>`; }).join('')}<td>${row.raw_score}</td><td>${row.championship_points}</td></tr>`).join('')}</tbody></table></div>` : noData('This scored round has no submitted lineups.')}</section>`;
+    const rows = sortedFantasyRows(state.weekResults, 'weekly', (row, key, index) => {
+      if (key === 'rank') return row.weekly_rank;
+      if (key === 'player') return row.player;
+      if (key === 'tier1' || key === 'tier2' || key === 'tier3') return lineupName(row.drivers, Number(key.at(-1)));
+      if (key === 'raw_score') return row.raw_score;
+      if (key === 'championship_points') return row.championship_points;
+      return index;
+    });
+    return `<section class="fantasy-panel"><div class="panel-title"><div><p class="eyebrow">Official scoring</p><h3>Weekly Results</h3></div><p>Each driver total includes finishing points and all earned bonuses. Click any heading to sort.</p></div><label class="fantasy-select-label">Choose scored round<select data-fantasy-results-round>${scored.map((round) => `<option value="${round.id}" ${round.id === state.resultsRoundId ? 'selected' : ''}>Season ${round.season_id} — Round ${Number(round.race_index) + 1}: ${esc(round.race_name)}</option>`).join('')}</select></label>${rows.length ? `<div class="table-shell"><table class="profile-table fantasy-table"><thead><tr>${sortHeader('weekly', 'Rank', 'rank')}${sortHeader('weekly', 'Player', 'player')}${sortHeader('weekly', 'Tier 1', 'tier1')}${sortHeader('weekly', 'Tier 2', 'tier2')}${sortHeader('weekly', 'Tier 3', 'tier3')}${sortHeader('weekly', 'Raw Score', 'raw_score')}${sortHeader('weekly', 'Champ. Pts', 'championship_points')}</tr></thead><tbody>${rows.map((row) => `<tr><td>P${row.weekly_rank}</td><td><strong>${esc(row.player)}</strong></td>${[1, 2, 3].map((tier) => { const driver = (row.drivers || []).find((item) => Number(item.tier) === tier); const bonuses = driver ? [['Win', driver.win_bonus], ['Podium', driver.podium_bonus], ['Pole', driver.pole_bonus], ['FL', driver.fastest_lap_bonus], ['Led', driver.led_a_lap_bonus], ['Most Led', driver.most_laps_led_bonus], ['Move', driver.movement_bonus]].filter(([, value]) => safeNumber(value) > 0).map(([label, value]) => `${label} +${value}`).join(', ') : ''; return `<td><strong>${esc(driver?.driver_name || dash)}</strong><small class="fantasy-score-detail">P${driver?.finishing_position || dash} · ${driver?.total_score ?? dash}${bonuses ? `<br>${esc(bonuses)}` : ''}</small></td>`; }).join('')}<td>${row.raw_score}</td><td>${row.championship_points}</td></tr>`).join('')}</tbody></table></div>` : noData('This scored round has no submitted lineups.')}</section>`;
   }
   function renderStandings() {
-    const rows = state.standings || [];
-    return `<section class="fantasy-panel"><div class="panel-title"><div><p class="eyebrow">Season 5</p><h3>Fantasy Season Standings</h3></div><p>Ranked by counting fantasy championship points. Up to ${config().season_drops} lowest submitted, scored weeks are automatically dropped; No Entry never counts as zero.</p></div>${rows.length ? `<div class="table-shell"><table class="profile-table fantasy-table"><thead><tr><th>Rank</th><th>Player</th><th>Counting Pts</th><th>Raw Pts</th><th>Weekly Wins</th><th>Rounds Entered</th><th>Avg. Raw</th><th>Best Week</th><th>Lowest Counting</th><th>Drops Used</th><th>Most Selected</th></tr></thead><tbody>${rows.map((row, index) => `<tr><td>${index + 1}</td><td><strong>${esc(row.display_name)}</strong></td><td>${number.format(row.counting_points || 0)}</td><td>${number.format(row.raw_points || 0)}</td><td>${number.format(row.weekly_wins || 0)}</td><td>${number.format(row.rounds_entered || 0)}</td><td>${row.average_raw_score ?? dash}</td><td>${row.best_weekly_score ?? dash}</td><td>${row.lowest_counting_score ?? dash}</td><td>${row.drops_used || 0}</td><td>${esc(row.most_selected_driver || dash)}</td></tr>`).join('')}</tbody></table></div>` : noData('Season standings will appear after the first official Fantasy League round is scored.')}</section>`;
+    const baseRows = state.standings || [];
+    const rows = sortedFantasyRows(baseRows, 'standings', (row, key, index) => {
+      if (key === 'rank') return index + 1;
+      if (key === 'player') return row.display_name;
+      if (key === 'counting_points') return row.counting_points;
+      if (key === 'raw_points') return row.raw_points;
+      if (key === 'weekly_wins') return row.weekly_wins;
+      if (key === 'rounds_entered') return row.rounds_entered;
+      if (key === 'average_raw_score') return row.average_raw_score;
+      if (key === 'best_weekly_score') return row.best_weekly_score;
+      if (key === 'lowest_counting_score') return row.lowest_counting_score;
+      if (key === 'drops_used') return row.drops_used;
+      if (key === 'most_selected_driver') return row.most_selected_driver || '';
+      return index;
+    });
+    return `<section class="fantasy-panel"><div class="panel-title"><div><p class="eyebrow">Season 5</p><h3>Fantasy Season Standings</h3></div><p>Ranked by counting fantasy championship points. Up to ${config().season_drops} lowest submitted, scored weeks are automatically dropped; No Entry never counts as zero. Click any heading to sort.</p></div>${rows.length ? `<div class="table-shell"><table class="profile-table fantasy-table"><thead><tr>${sortHeader('standings', 'Rank', 'rank')}${sortHeader('standings', 'Player', 'player')}${sortHeader('standings', 'Counting Pts', 'counting_points')}${sortHeader('standings', 'Raw Pts', 'raw_points')}${sortHeader('standings', 'Weekly Wins', 'weekly_wins')}${sortHeader('standings', 'Rounds Entered', 'rounds_entered')}${sortHeader('standings', 'Avg. Raw', 'average_raw_score')}${sortHeader('standings', 'Best Week', 'best_weekly_score')}${sortHeader('standings', 'Lowest Counting', 'lowest_counting_score')}${sortHeader('standings', 'Drops Used', 'drops_used')}${sortHeader('standings', 'Most Selected', 'most_selected_driver')}</tr></thead><tbody>${rows.map((row) => `<tr><td>${baseRows.indexOf(row) + 1}</td><td><strong>${esc(row.display_name)}</strong></td><td>${number.format(row.counting_points || 0)}</td><td>${number.format(row.raw_points || 0)}</td><td>${number.format(row.weekly_wins || 0)}</td><td>${number.format(row.rounds_entered || 0)}</td><td>${row.average_raw_score ?? dash}</td><td>${row.best_weekly_score ?? dash}</td><td>${row.lowest_counting_score ?? dash}</td><td>${row.drops_used || 0}</td><td>${esc(row.most_selected_driver || dash)}</td></tr>`).join('')}</tbody></table></div>` : noData('Season standings will appear after the first official Fantasy League round is scored.')}</section>`;
   }
   function renderTiers() {
     const current = state.currentRound;
@@ -315,9 +356,14 @@
   }
 
   root.addEventListener('click', async (event) => {
-    const view = event.target.closest('[data-fantasy-view]'); const action = event.target.closest('[data-fantasy-action]'); const player = event.target.closest('[data-fantasy-player-action]');
+    const view = event.target.closest('[data-fantasy-view]'); const action = event.target.closest('[data-fantasy-action]'); const player = event.target.closest('[data-fantasy-player-action]'); const sort = event.target.closest('[data-fantasy-sort-scope]');
     if (view) { state.view = view.dataset.fantasyView; setMessage(); if (state.view === 'admin' && state.adminSession) await refreshAdminData(); render(); return; }
     try {
+      if (sort) {
+        const scope = sort.dataset.fantasySortScope; const key = sort.dataset.fantasySortKey; const current = state.sort[scope];
+        state.sort[scope] = { key, direction: current.key === key ? (current.direction === 'asc' ? 'desc' : 'asc') : (key === 'player' || key === 'tier1' || key === 'tier2' || key === 'tier3' || key === 'most_selected_driver' ? 'asc' : 'desc') };
+        render(); return;
+      }
       if (player) { await adminPlayer(player); return; }
       if (!action) return;
       const name = action.dataset.fantasyAction;
