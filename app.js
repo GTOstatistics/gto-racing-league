@@ -2052,5 +2052,17 @@
     }
     if (event.target.matches('[data-prediction-h2h-driver]')) { state.predictionH2HDriver = event.target.value; state.predictionH2HDriverSortKey = 'closeness'; state.predictionH2HDriverSortDirection = 'asc'; renderPredictions(); }
   });
+  window.GTO_LEAGUE = {
+    seasons,
+    pointsSystem,
+    getArchiveRounds,
+    getScheduleRounds,
+    calculateStandings,
+    getCarClass,
+    getRoundLaps,
+    predictionRaceForecast,
+    predictionAmericanOdds,
+    predictionSeasonId
+  };
   renderPointsSystem(); renderSeason(); renderProfileSelector(); renderDriverProfile(); renderRecords();
 })();
