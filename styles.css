@@ -323,6 +323,91 @@ tbody tr:hover { background: #fbfcfe; }
 .prediction-h2h-summary > div { display: flex; flex-wrap: wrap; gap: 7px 16px; }
 .prediction-h2h-summary span { color: #536074; font-size: 11px; line-height: 1.4; }
 .prediction-h2h-summary b { color: var(--ink); }
+
+/* Fantasy League */
+.fantasy-content { width: min(1120px, 100%); }
+.fantasy-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+.fantasy-tabs button { padding: 9px 12px; border: 1px solid var(--line); background: var(--card); color: #596372; cursor: pointer; font-size: 11px; font-weight: 850; }
+.fantasy-tabs button[aria-selected="true"] { border-color: var(--ink); background: var(--ink); color: white; }
+.fantasy-notice, .fantasy-error { width: fit-content; max-width: 100%; margin: 0 0 16px; padding: 11px 13px; border-left: 4px solid var(--blue); background: #edf2ff; color: #30415d; font-size: 12px; font-weight: 750; line-height: 1.45; }
+.fantasy-error { border-left-color: var(--orange); background: #fff1ec; color: #9b341d; }
+.fantasy-home-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 1px; border: 1px solid var(--ink); background: var(--ink); }
+.fantasy-hero-card, .fantasy-account-card { min-height: 260px; padding: 30px; background: var(--card); }
+.fantasy-hero-card { background: var(--ink); color: white; }
+.fantasy-hero-card .eyebrow { color: var(--lime); }
+.fantasy-home-grid h3 { margin: 0 0 12px; font-size: clamp(28px, 3.5vw, 42px); line-height: .95; letter-spacing: -.06em; }
+.fantasy-hero-card > p:not(.eyebrow), .fantasy-account-card > p:not(.eyebrow) { max-width: 500px; margin-bottom: 24px; color: #b9c2cf; font-size: 13px; line-height: 1.6; }
+.fantasy-account-card > p:not(.eyebrow) { color: var(--muted); }
+.fantasy-status { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; }
+.fantasy-status strong { color: var(--yellow); font-size: 14px; font-weight: 950; text-transform: uppercase; }
+.fantasy-status span { color: #c4ccd7; font-size: 11px; font-weight: 750; }
+.fantasy-text-button { margin: 12px 0 0; padding: 0; border: 0; background: transparent; color: var(--blue); cursor: pointer; font-size: 11px; font-weight: 900; text-decoration: underline; text-underline-offset: 3px; }
+.fantasy-panel { width: fit-content; max-width: 100%; margin-top: 20px; padding: 24px; border: 1px solid var(--ink); background: var(--card); box-shadow: var(--shadow); }
+.fantasy-panel .panel-title > p { max-width: 500px; }
+.fantasy-empty, .fantasy-security-note { max-width: 660px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.fantasy-tier { margin-top: 16px; border: 1px solid var(--line); }
+.fantasy-tier:first-child { margin-top: 0; }
+.fantasy-tier-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 13px; background: #f1f4f8; }
+.fantasy-tier-heading span { color: var(--ink); font-size: 11px; font-weight: 950; letter-spacing: .1em; text-transform: uppercase; }
+.fantasy-tier-heading small { color: var(--muted); font-size: 10px; font-weight: 750; }
+.fantasy-driver-row { display: grid; grid-template-columns: minmax(150px, 1.2fr) 100px 118px 62px; align-items: center; gap: 12px; padding: 12px 13px; border-top: 1px solid var(--line); font-size: 12px; }
+.fantasy-driver-row strong { font-size: 13px; }
+.fantasy-driver-row span { color: var(--muted); }
+.fantasy-driver-row b { color: var(--blue); text-align: right; }
+.fantasy-form-panel { max-width: 620px; }
+.fantasy-form-panel form, .fantasy-admin-grid section { display: grid; gap: 13px; }
+.fantasy-form-panel label, .fantasy-admin-grid label { display: grid; gap: 6px; color: #677182; font-size: 10px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
+.fantasy-form-panel input, .fantasy-admin-grid input, .fantasy-admin-grid select { min-height: 42px; padding: 0 11px; border: 1px solid var(--ink); border-radius: 0; background: white; color: var(--ink); font: inherit; font-size: 13px; font-weight: 700; letter-spacing: 0; text-transform: none; }
+.fantasy-form-panel .button { width: fit-content; margin-top: 3px; }
+.fantasy-form-panel .fantasy-security-note { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.fantasy-sticky-lineup { position: sticky; z-index: 2; top: 8px; display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0 0 18px; padding: 12px; border: 1px solid #9eb8ff; background: #edf2ff; color: #4d5b70; font-size: 11px; }
+.fantasy-sticky-lineup b { color: var(--ink); }
+.fantasy-select-tier { margin-top: 18px; }
+.fantasy-driver-choice { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 12px 13px; border-top: 1px solid var(--line); cursor: pointer; }
+.fantasy-driver-choice input { width: 17px; height: 17px; accent-color: var(--blue); }
+.fantasy-driver-choice strong, .fantasy-driver-choice small { display: block; }
+.fantasy-driver-choice strong { font-size: 13px; }
+.fantasy-driver-choice small { margin-top: 3px; color: var(--muted); font-size: 10px; line-height: 1.35; }
+.fantasy-driver-choice b { color: var(--blue); font-size: 13px; }
+.fantasy-driver-choice.is-selected { background: #edf2ff; box-shadow: inset 3px 0 0 var(--blue); }
+.fantasy-driver-choice.is-unavailable { cursor: not-allowed; opacity: .55; background: #f3f5f7; }
+.fantasy-table { min-width: 820px; }
+.fantasy-profile-grid { display: grid; grid-template-columns: repeat(3, minmax(190px, 1fr)); gap: 1px; border: 1px solid var(--ink); background: var(--ink); }
+.fantasy-profile-grid article { padding: 18px; background: var(--card); }
+.fantasy-profile-grid span, .fantasy-profile-grid small { display: block; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.fantasy-profile-grid h4 { margin: 9px 0 13px; font-size: 18px; letter-spacing: -.04em; }
+.fantasy-profile-grid strong { display: block; color: var(--blue); font-size: 25px; letter-spacing: -.06em; }
+.fantasy-profile-grid small { margin-top: 8px; font-weight: 650; letter-spacing: 0; text-transform: none; }
+.fantasy-rules ol { display: grid; gap: 12px; max-width: 880px; margin: 0; padding-left: 20px; }
+.fantasy-rules li { color: #4f5c6e; font-size: 13px; line-height: 1.6; }
+.fantasy-rules strong { color: var(--ink); }
+.fantasy-admin-grid { display: grid; grid-template-columns: minmax(280px, .9fr) minmax(0, 1.6fr); gap: 20px; }
+.fantasy-admin-grid h4, .fantasy-admin-summary h4 { margin: 0; font-size: 19px; letter-spacing: -.04em; }
+.fantasy-admin-grid section { padding: 18px; border: 1px solid var(--line); }
+.fantasy-admin-grid .button { width: fit-content; }
+.fantasy-admin-summary { margin-top: 20px; padding: 16px; border-left: 4px solid var(--blue); background: #edf2ff; }
+.fantasy-admin-summary p { max-width: 780px; margin: 8px 0 0; color: #556379; font-size: 12px; line-height: 1.55; }
+.fantasy-recovery-card { max-width: 620px; }
+.fantasy-recovery-card h3 { margin: 0 0 15px; font-size: 28px; letter-spacing: -.055em; }
+.fantasy-recovery-card code { display: block; overflow-wrap: anywhere; margin-bottom: 15px; padding: 13px; border: 1px dashed var(--blue); background: #edf2ff; color: #123fba; font-size: 15px; font-weight: 900; }
+.fantasy-recovery-card p:not(.eyebrow) { color: var(--muted); font-size: 12px; line-height: 1.55; }
+
+@media (max-width: 880px) {
+  .fantasy-home-grid, .fantasy-admin-grid { grid-template-columns: 1fr; }
+  .fantasy-profile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 620px) {
+  .fantasy-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fantasy-tabs button { min-height: 42px; padding: 7px; font-size: 10px; }
+  .fantasy-hero-card, .fantasy-account-card, .fantasy-panel { padding: 19px; }
+  .fantasy-driver-row { grid-template-columns: minmax(0, 1fr) auto; gap: 5px 11px; }
+  .fantasy-driver-row span:nth-of-type(1) { grid-row: 2; }
+  .fantasy-driver-row span:nth-of-type(2) { grid-row: 2; text-align: right; }
+  .fantasy-driver-row b { grid-column: 2; grid-row: 1; }
+  .fantasy-profile-grid { grid-template-columns: 1fr; }
+  .fantasy-sticky-lineup { top: 4px; display: grid; gap: 5px; }
+  .fantasy-table { min-width: 760px; }
+}
 .power-rankings-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; margin-bottom: 18px; }
 .power-round-picker { margin-left: auto; }
 .power-ranking-panel { padding: 24px; border: 1px solid var(--ink); background: var(--card); box-shadow: var(--shadow); }
