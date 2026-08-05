@@ -38,3 +38,23 @@ window.GTO_DATA.seasons.push({
   drivers: []
 });
 // End of extracted data
+
+// Corrected classified finishes for Season 4, Race 7 — Miyabi.
+(() => {
+  const season = window.GTO_DATA.seasons.find((entry) => entry.id === '4');
+  const raceIndex = season.races.findIndex((race) => /^Miyabi\b/i.test(race.name));
+  const correctedFinishes = {
+    'Peter Braxton': 9,
+    'Zay Smitty': 10,
+    'Dante Quarato': 11,
+    'Colin Mckevitt': 12,
+    'Landon Beech': 13
+  };
+
+  season.drivers.forEach((driver) => {
+    const position = correctedFinishes[driver.name];
+    if (!position) return;
+    driver.results[raceIndex].position = position;
+    driver.results[raceIndex].points = window.GTO_DATA.pointsSystem[String(position)];
+  });
+})();
