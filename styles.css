@@ -391,6 +391,15 @@ tbody tr:hover { background: #fbfcfe; }
 .fantasy-recovery-card h3 { margin: 0 0 15px; font-size: 28px; letter-spacing: -.055em; }
 .fantasy-recovery-card code { display: block; overflow-wrap: anywhere; margin-bottom: 15px; padding: 13px; border: 1px dashed var(--blue); background: #edf2ff; color: #123fba; font-size: 15px; font-weight: 900; }
 .fantasy-recovery-card p:not(.eyebrow) { color: var(--muted); font-size: 12px; line-height: 1.55; }
+.fantasy-select-label { display: grid; width: min(440px, 100%); gap: 6px; margin: 0 0 18px; color: #677182; font-size: 10px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
+.fantasy-select-label select { min-height: 42px; padding: 0 11px; border: 1px solid var(--ink); border-radius: 0; background: white; color: var(--ink); font: inherit; font-size: 13px; font-weight: 700; letter-spacing: 0; text-transform: none; }
+.fantasy-score-detail { display: block; margin-top: 4px; color: var(--muted); font-size: 9px; font-weight: 700; line-height: 1.35; }
+.fantasy-admin-block { display: grid; gap: 13px; margin-top: 20px; padding: 18px; border: 1px solid var(--line); }
+.fantasy-admin-block h4 { margin: 0; font-size: 19px; letter-spacing: -.04em; }
+.fantasy-action-cell { display: flex; flex-wrap: wrap; gap: 5px; min-width: 230px; }
+.fantasy-action-cell button { padding: 6px 8px; border: 1px solid var(--line); background: white; color: var(--blue); cursor: pointer; font-size: 10px; font-weight: 850; }
+.fantasy-check { display: flex !important; align-items: center; gap: 9px !important; font-size: 10px !important; letter-spacing: .04em !important; text-transform: none !important; }
+.fantasy-check input { min-height: auto !important; width: 16px; height: 16px; padding: 0 !important; accent-color: var(--blue); }
 
 @media (max-width: 880px) {
   .fantasy-home-grid, .fantasy-admin-grid { grid-template-columns: 1fr; }
@@ -407,6 +416,7 @@ tbody tr:hover { background: #fbfcfe; }
   .fantasy-profile-grid { grid-template-columns: 1fr; }
   .fantasy-sticky-lineup { top: 4px; display: grid; gap: 5px; }
   .fantasy-table { min-width: 760px; }
+  .fantasy-admin-block { padding: 15px; }
 }
 .power-rankings-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; margin-bottom: 18px; }
 .power-round-picker { margin-left: auto; }
