@@ -1,6 +1,7 @@
 -- GTO Racing League Fantasy League secure backend
 -- Run this once in the Supabase SQL Editor as the postgres role.
--- Before running: replace SET_A_PRIVATE_ADMIN_CODE with a private code you will save.
+-- The initial administrator code is intentionally random and unusable from the public site.
+-- Set your own private code afterward with the short command provided by Codex.
 
 create extension if not exists pgcrypto;
 
@@ -29,7 +30,7 @@ create table if not exists public.fantasy_admin_config (
   updated_at timestamptz not null default now()
 );
 insert into public.fantasy_admin_config (id, admin_code_hash)
-values (true, encode(digest('SET_A_PRIVATE_ADMIN_CODE', 'sha256'), 'hex'))
+values (true, encode(digest(gen_random_uuid()::text || gen_random_uuid()::text, 'sha256'), 'hex'))
 on conflict (id) do nothing;
 
 create table if not exists public.fantasy_players (
