@@ -391,6 +391,44 @@ tbody tr:hover { background: #fbfcfe; }
 .fantasy-recovery-card h3 { margin: 0 0 15px; font-size: 28px; letter-spacing: -.055em; }
 .fantasy-recovery-card code { display: block; overflow-wrap: anywhere; margin-bottom: 15px; padding: 13px; border: 1px dashed var(--blue); background: #edf2ff; color: #123fba; font-size: 15px; font-weight: 900; }
 .fantasy-recovery-card p:not(.eyebrow) { color: var(--muted); font-size: 12px; line-height: 1.55; }
+
+/* GTO Sportsbook — companion patterns to Fantasy League */
+.sportsbook-content { width: min(1120px, 100%); }
+.sportsbook-home-grid { margin-bottom: 20px; }
+.sportsbook-account { min-height: 260px; }
+.sportsbook-account strong { color: var(--blue); }
+.sportsbook-setup fieldset { display: grid; gap: 8px; margin: 0; padding: 12px; border: 1px solid var(--line); }
+.sportsbook-setup legend { padding: 0 5px; color: #677182; font-size: 10px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
+.sportsbook-setup fieldset label { display: flex; align-items: center; gap: 8px; color: var(--ink); font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; }
+.sportsbook-reuse { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 16px; padding: 12px; border-left: 4px solid var(--blue); background: #edf2ff; color: #43546c; font-size: 12px; }
+.sportsbook-reuse strong { color: var(--ink); }
+.sportsbook-reuse button, .sportsbook-add, .sportsbook-admin-buttons button, .sportsbook-driver-summary button { padding: 7px 10px; border: 1px solid var(--ink); background: white; color: var(--ink); cursor: pointer; font: inherit; font-size: 10px; font-weight: 900; }
+.sportsbook-reuse button:hover, .sportsbook-add:hover, .sportsbook-admin-buttons button:hover, .sportsbook-driver-summary button:hover { background: var(--ink); color: white; }
+.sportsbook-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-bottom: 18px; }
+.sportsbook-controls label { display: grid; gap: 5px; color: #677182; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.sportsbook-controls select, .sportsbook-slip input { min-height: 39px; padding: 0 10px; border: 1px solid var(--ink); border-radius: 0; background: white; color: var(--ink); font: inherit; font-size: 12px; font-weight: 750; }
+.sportsbook-balance { margin-left: auto; padding-bottom: 10px; color: var(--muted); font-size: 11px; font-weight: 800; }
+.sportsbook-balance b { color: var(--blue); }
+.sportsbook-betting-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(285px, .38fr); gap: 18px; align-items: start; }
+.sportsbook-slip { position: sticky; top: 10px; display: grid; gap: 12px; margin: 0; border-color: #9eb8ff; }
+.sportsbook-slip > div { display: grid; gap: 7px; }
+.sportsbook-slip label { display: grid; gap: 5px; color: #536074; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.sportsbook-slip-leg { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 8px; align-items: center; padding-top: 7px; border-top: 1px solid #c9d6ef; color: #43546c; font-size: 11px; }
+.sportsbook-slip-leg b { color: var(--blue); }
+.sportsbook-slip-leg button { width: 21px; height: 21px; padding: 0; border: 1px solid #9eb8ff; background: white; color: #50617a; cursor: pointer; font-size: 16px; line-height: 1; }
+.sportsbook-slip .button { width: 100%; }
+.sportsbook-add[disabled] { cursor: not-allowed; opacity: .5; }
+.sportsbook-blocked { display: block; margin-top: 4px; color: #a33f23 !important; font-weight: 800 !important; }
+.sportsbook-link { padding: 0; border: 0; background: transparent; color: var(--blue); cursor: pointer; font: inherit; font-weight: 850; text-align: left; }
+.sportsbook-link:hover, .sportsbook-link:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+.sportsbook-current-row { background: #edf2ff; box-shadow: inset 3px 0 0 var(--blue); }
+.sportsbook-subheading { margin: 26px 0 10px; font-size: 20px; letter-spacing: -.04em; }
+.sportsbook-profile-tabs { margin: 18px 0; }
+.sportsbook-disclaimer { margin: 20px 0 0; padding: 14px; border-left: 4px solid var(--orange); background: #fff4e6; color: #7a3b13; font-size: 12px; line-height: 1.5; }
+.sportsbook-admin-buttons { display: flex; flex-wrap: wrap; gap: 7px; }
+.sportsbook-driver-summary { margin: 0 0 18px; padding: 16px; border: 1px solid var(--ink); background: #edf2ff; box-shadow: var(--shadow); }
+.sportsbook-driver-summary h3 { margin: 7px 0; font-size: 20px; letter-spacing: -.045em; }
+.sportsbook-driver-summary p { margin: 0 0 11px; color: #516078; font-size: 12px; line-height: 1.5; }
 .fantasy-select-label { display: grid; width: min(440px, 100%); gap: 6px; margin: 0 0 18px; color: #677182; font-size: 10px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
 .fantasy-select-label select { min-height: 42px; padding: 0 11px; border: 1px solid var(--ink); border-radius: 0; background: white; color: var(--ink); font: inherit; font-size: 13px; font-weight: 700; letter-spacing: 0; text-transform: none; }
 .fantasy-score-detail { display: block; margin-top: 4px; color: var(--muted); font-size: 9px; font-weight: 700; line-height: 1.35; }
@@ -404,6 +442,8 @@ tbody tr:hover { background: #fbfcfe; }
 @media (max-width: 880px) {
   .fantasy-home-grid, .fantasy-admin-grid { grid-template-columns: 1fr; }
   .fantasy-profile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sportsbook-betting-layout { grid-template-columns: 1fr; }
+  .sportsbook-slip { position: static; }
 }
 @media (max-width: 620px) {
   .fantasy-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -417,6 +457,9 @@ tbody tr:hover { background: #fbfcfe; }
   .fantasy-sticky-lineup { top: 4px; display: grid; gap: 5px; }
   .fantasy-table { min-width: 760px; }
   .fantasy-admin-block { padding: 15px; }
+  .sportsbook-controls { display: grid; grid-template-columns: 1fr; }
+  .sportsbook-balance { margin-left: 0; padding-bottom: 0; }
+  .sportsbook-slip { position: static; }
 }
 .power-rankings-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; margin-bottom: 18px; }
 .power-round-picker { margin-left: auto; }
