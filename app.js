@@ -2061,6 +2061,9 @@
     getCarClass,
     getRoundLaps,
     predictionRaceForecast,
+    predictionRaceSimulationData,
+    predictionHeadToHeadData,
+    predictionChampionshipForecast,
     predictionAmericanOdds,
     predictionSeasonId
   };
