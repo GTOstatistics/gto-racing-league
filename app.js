@@ -1746,7 +1746,7 @@
     const cacheKey = predictionRaceSimulationKey(season, round, includeCurrentSeason, rows);
     if (predictionRaceSimulationCache.has(cacheKey)) return predictionRaceSimulationCache.get(cacheKey);
     const simulations = 7000; const counts = rows.map(() => ({ win: 0, topThree: 0, topFive: 0, pole: 0, fastestLap: 0 }));
-    const finishingOrders = [];
+    const finishingOrders = []; const poleWinners = [];
     const seed = [season.id, round.index, includeCurrentSeason, ...rows.map((row) => row.name + row.rating.toFixed(3))].join('|'); const random = predictionRandom(seed);
     for (let simulation = 0; simulation < simulations; simulation += 1) {
       const sampledRows = predictionSimulationRows(rows, random); const pool = sampledRows.map((_, index) => index);
@@ -1755,7 +1755,8 @@
         const pick = predictionPick(pool, sampledRows, random); finishingOrder.push(pick); counts[pick].win += place === 0 ? 1 : 0; counts[pick].topThree += place < 3 ? 1 : 0; counts[pick].topFive += 1; pool.splice(pool.indexOf(pick), 1);
       }
       const all = sampledRows.map((_, index) => index);
-      counts[predictionPick(all, sampledRows, random, 'poleWeight')].pole += 1;
+      const poleWinner = predictionPick(all, sampledRows, random, 'poleWeight');
+      counts[poleWinner].pole += 1; poleWinners.push(poleWinner);
       counts[predictionPick(all, sampledRows, random, 'fastestLapWeight')].fastestLap += 1;
       // The original five finishing draws remain untouched, preserving the current
       // full-race forecast. A separate deterministic tail supplies the complete
@@ -1769,6 +1770,7 @@
       rows,
       simulations,
       finishingOrders,
+      poleWinners,
       forecastRows: rows.map((row, index) => ({ ...row, winProbability: counts[index].win / simulations, topThreeProbability: counts[index].topThree / simulations, topFiveProbability: counts[index].topFive / simulations, poleProbability: counts[index].pole / simulations, fastestLapProbability: counts[index].fastestLap / simulations }))
     };
     predictionRaceSimulationCache.set(cacheKey, data);
