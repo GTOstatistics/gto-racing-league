@@ -21,3 +21,4 @@ Use the public repository name `gto-racing-league` under the GitHub account `GTO
 4. Select the `main` branch and the `/(root)` folder, then save.
 
 The public site address will be `https://gtostatistics.github.io/gto-racing-league/`.
+
