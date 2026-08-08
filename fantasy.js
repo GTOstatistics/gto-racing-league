@@ -113,7 +113,10 @@
       const orders = simulation?.finishingOrders || []; const forecast = simulation?.forecastRows || [];
       if (!orders.length) return {};
       const output = Object.fromEntries(forecast.filter((row) => !isRetired(row.name)).map((row) => [row.name, 0]));
-      orders.forEach((order) => order.forEach((name, index) => {
+      // `finishingOrders` stores row indexes, not driver names. Resolve them
+      // through the simulation field before adding the real Fantasy score.
+      orders.forEach((order) => order.forEach((driverIndex, index) => {
+        const name = simulation.rows?.[driverIndex]?.name;
         if (!(name in output)) return;
         const position = index + 1;
         output[name] += safeNumber(finishingScale[String(Math.min(15, position))], 1)
