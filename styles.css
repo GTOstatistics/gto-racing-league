@@ -684,6 +684,36 @@ tbody tr:hover { background: #fbfcfe; }
 .profile-jump-link.crown-jewel-name { color: #b97800; }
 .car-class-header p:last-child .crown-jewel-name { margin: 0; color: #b97800; }
 
+/* Fantasy history, profiles, awards, and records. */
+.fantasy-name-link { padding: 0; border: 0; background: transparent; color: var(--blue); cursor: pointer; font: inherit; font-weight: 850; text-align: left; }
+.fantasy-name-link:hover, .fantasy-name-link:focus-visible { text-decoration: underline; }
+.fantasy-name-link:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+.fantasy-profile-detail { min-width: min(1120px, 100%); }
+.fantasy-profile-detail h4 { margin: 24px 0 12px; font-size: 19px; letter-spacing: -.04em; }
+.fantasy-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 1px; border: 1px solid var(--line); background: var(--line); }
+.fantasy-stat-card { min-width: 0; padding: 14px; background: var(--card); }
+.fantasy-stat-card span { display: block; color: var(--muted); font-size: 9px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+.fantasy-stat-card strong { display: block; margin-top: 6px; color: var(--ink); font-size: 20px; letter-spacing: -.05em; overflow-wrap: anywhere; }
+.fantasy-insight-grid { display: grid; grid-template-columns: minmax(230px, .8fr) minmax(360px, 1.2fr); gap: 16px; margin: 18px 0; }
+.fantasy-insight-grid > section, .fantasy-nested-panel { padding: 17px; border: 1px solid var(--line); background: #f7f9fc; }
+.fantasy-insight-grid h4 { margin: 0 0 10px; font-size: 16px; letter-spacing: -.04em; }
+.fantasy-insight-grid p { margin: 0 0 10px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.fantasy-award-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1px; border: 1px solid var(--line); background: var(--line); }
+.fantasy-award-grid article { min-width: 0; padding: 11px; background: var(--card); }
+.fantasy-award-grid span, .fantasy-award-grid small { display: block; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.fantasy-award-grid strong { display: block; margin: 5px 0; font-size: 12px; overflow-wrap: anywhere; }
+.fantasy-award-grid small { letter-spacing: 0; text-transform: none; }
+.fantasy-picked-by { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.fantasy-picked-by article { padding: 13px; border: 1px solid var(--line); }
+.fantasy-picked-by p { margin: 7px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.fantasy-record-row { display: grid; grid-template-columns: minmax(210px, .85fr) minmax(0, 1.4fr); gap: 16px; align-items: start; padding: 13px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.fantasy-record-row:first-of-type { border-top: 0; }
+.fantasy-record-row > span { color: var(--muted); line-height: 1.5; }
+.fantasy-driver-profile-panel { margin-top: 20px; }
+.fantasy-driver-profile-panel details { margin-top: 16px; }
+.fantasy-driver-profile-panel summary { color: var(--blue); cursor: pointer; font-size: 12px; font-weight: 850; }
+.fantasy-driver-profile-panel .fantasy-stat-grid { margin-bottom: 16px; }
+
 /* On phones, let visible archive components use their intrinsic content width
    without exceeding the available reading width. */
 @media (max-width: 620px) {
@@ -718,4 +748,13 @@ tbody tr:hover { background: #fbfcfe; }
 
   .table-shell > table,
   .mini-table-shell > table { width: max-content; }
+
+  .fantasy-tabs { display: flex; overflow-x: auto; grid-template-columns: none; -webkit-overflow-scrolling: touch; }
+  .fantasy-tabs button { flex: 0 0 auto; min-width: 92px; }
+  .fantasy-profile-detail { min-width: 0; }
+  .fantasy-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fantasy-stat-card { padding: 12px; }
+  .fantasy-stat-card strong { font-size: 18px; }
+  .fantasy-insight-grid, .fantasy-picked-by { grid-template-columns: 1fr; }
+  .fantasy-record-row { grid-template-columns: 1fr; gap: 4px; }
 }
