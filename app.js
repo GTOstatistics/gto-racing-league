@@ -659,34 +659,50 @@
   function constructorsSeasonStandings(season) {
     const definition = constructorsTeamsBySeason[season.id];
     if (!definition) return { definition: null, teams: [] };
-    // Season 4 is intentionally calculated with its official point-drop totals,
-    // regardless of whether a visitor temporarily inspects the full standings.
+    // Individual standings remain season totals, while Constructors points are
+    // intentionally scored race by race: average the active team drivers in
+    // each completed round, then add those round averages across the season.
     const individual = calculateStandings(season, {
       applyChampionshipPointDrops: season.id === '4',
       applyChampionshipBonusPoints: true
     });
     const individualByName = new Map(individual.map((driver) => [driver.name, driver]));
+    const rounds = getArchiveRounds(season);
     const teams = definition.teams.map((team) => {
       const members = team.drivers.map((name) => ({ name, driver: individualByName.get(name) || null }));
       const active = members.filter((member) => Boolean(member.driver));
-      // Official Season 5 always divides by the complete roster. The Season 4
-      // retrospective only divides by people who recorded an actual start.
-      const divisor = definition.kind === 'official' ? members.length : active.length;
-      const totalPoints = active.reduce((total, member) => total + member.driver.points, 0);
+      const roundAverages = rounds.map(({ race, index }) => {
+        const starters = members.map((member) => {
+          const result = member.driver?.results[index];
+          if (!result || result.position === null || result.position === undefined) return null;
+          const bonuses = getChampionshipBonus({ ...result, race, roundIndex: index }, season);
+          return { name: member.name, points: (result.points || 0) + bonuses.totalBonusPoints };
+        }).filter(Boolean);
+        const totalPoints = starters.reduce((total, entry) => total + entry.points, 0);
+        return {
+          race,
+          index,
+          starters,
+          totalPoints,
+          averagePoints: starters.length ? totalPoints / starters.length : 0
+        };
+      });
+      const scoringRounds = roundAverages.filter((round) => round.starters.length);
+      const seasonPoints = scoringRounds.reduce((total, round) => total + round.averagePoints, 0);
       return {
         ...team,
         members,
         active,
         inactive: members.filter((member) => !member.driver),
-        totalPoints,
-        divisor,
-        averagePoints: divisor ? totalPoints / divisor : 0
+        roundAverages,
+        scoringRounds,
+        seasonPoints
       };
-    }).sort((first, second) => second.averagePoints - first.averagePoints || first.name.localeCompare(second.name));
-    const leaderAverage = teams[0]?.averagePoints || 0;
+    }).sort((first, second) => second.seasonPoints - first.seasonPoints || first.name.localeCompare(second.name));
+    const leaderPoints = teams[0]?.seasonPoints || 0;
     return {
       definition,
-      teams: teams.map((team, index) => ({ ...team, position: index + 1, gap: Math.max(0, leaderAverage - team.averagePoints) }))
+      teams: teams.map((team, index) => ({ ...team, position: index + 1, gap: Math.max(0, leaderPoints - team.seasonPoints) }))
     };
   }
   function constructorDriverCell(member) {
@@ -700,7 +716,7 @@
     const officialNoStartRows = definition.kind === 'official' && team.inactive.length
       ? team.inactive.map((member) => '<tr class="constructors-no-start"><td>—</td><td>' + constructorDriverCell(member) + '</td><td>0</td><td>—</td><td>—</td></tr>').join('')
       : '';
-    return '<section id="constructors-profile" class="constructors-profile"><div class="panel-title"><div><p class="eyebrow">Team profile</p><h3>' + escapeHtml(team.name) + '</h3></div><button class="profile-jump-link" type="button" data-constructors-back>Back to Constructors Standings</button></div><div class="constructors-summary"><div><span>Constructors position</span><strong>P' + team.position + '</strong></div><div><span>Average points</span><strong>' + constructorsPoints(team.averagePoints) + '</strong></div><div><span>' + (definition.kind === 'official' ? 'Official roster' : 'Participating roster') + '</span><strong>' + team.divisor + ' driver' + (team.divisor === 1 ? '' : 's') + '</strong></div></div><div class="mini-table-shell"><table class="profile-table constructors-driver-table"><thead><tr><th>Individual position</th><th>Driver</th><th>Individual points</th><th>Wins</th><th>Podiums</th></tr></thead><tbody>' + (activeRows + officialNoStartRows || '<tr><td colspan="5">No team members have a recorded start yet.</td></tr>') + '</tbody></table></div>' + inactive + '</section>';
+    return '<section id="constructors-profile" class="constructors-profile"><div class="panel-title"><div><p class="eyebrow">Team profile</p><h3>' + escapeHtml(team.name) + '</h3></div><button class="profile-jump-link" type="button" data-constructors-back>Back to Constructors Standings</button></div><div class="constructors-summary"><div><span>Constructors position</span><strong>P' + team.position + '</strong></div><div><span>Constructors points</span><strong>' + constructorsPoints(team.seasonPoints) + '</strong></div><div><span>Rounds averaged</span><strong>' + team.scoringRounds.length + ' round' + (team.scoringRounds.length === 1 ? '' : 's') + '</strong></div></div><p class="constructors-method-note">Season points are the sum of each round’s average among team drivers who started that race.</p><div class="mini-table-shell"><table class="profile-table constructors-driver-table"><thead><tr><th>Individual position</th><th>Driver</th><th>Individual points</th><th>Wins</th><th>Podiums</th></tr></thead><tbody>' + (activeRows + officialNoStartRows || '<tr><td colspan="5">No team members have a recorded start yet.</td></tr>') + '</tbody></table></div>' + inactive + '</section>';
   }
   function renderConstructorsStandings() {
     const container = elements.constructorsContent;
@@ -712,10 +728,10 @@
     if (!data.teams.some((team) => team.id === state.selectedConstructorTeam)) state.selectedConstructorTeam = '';
     const selected = data.teams.find((team) => team.id === state.selectedConstructorTeam);
     const subtitle = data.definition.kind === 'hypothetical'
-      ? 'Hypothetical standings using the current team structure and official Season 4 point-drop totals.'
-      : 'Official standings calculated from the current individual Season 5 championship points.';
-    const rows = data.teams.map((team) => '<tr><td class="standing-rank ' + (team.position <= 3 ? 'top-three' : '') + '">' + String(team.position).padStart(2, '0') + '</td><td><button class="constructors-team-link" type="button" data-constructor-team="' + escapeHtml(team.id) + '">' + escapeHtml(team.name) + '</button></td><td class="record-total">' + constructorsPoints(team.averagePoints) + '</td><td>' + (team.position === 1 || team.gap < 0.0000001 ? '—' : '-' + constructorsPoints(team.gap)) + '</td></tr>').join('');
-    container.innerHTML = '<div class="constructors-heading"><div><p class="eyebrow">' + (data.definition.kind === 'hypothetical' ? 'Retrospective constructors championship' : 'Official constructors championship') + '</p><h3>Constructors Standings</h3></div><p>' + subtitle + '</p></div><div class="table-shell constructors-table-shell"><table class="profile-table constructors-table"><thead><tr><th>Position</th><th>Team</th><th>Average points</th><th>Gap</th></tr></thead><tbody>' + rows + '</tbody></table></div>' + renderConstructorProfile(selected, data.definition);
+      ? 'Hypothetical standings using the current team structure. Each team’s season points are the sum of its active-driver average from every completed round.'
+      : 'Official standings calculated by adding each round’s active-driver team average, including the existing race bonus points.';
+    const rows = data.teams.map((team) => '<tr><td class="standing-rank ' + (team.position <= 3 ? 'top-three' : '') + '">' + String(team.position).padStart(2, '0') + '</td><td><button class="constructors-team-link" type="button" data-constructor-team="' + escapeHtml(team.id) + '">' + escapeHtml(team.name) + '</button></td><td class="record-total">' + constructorsPoints(team.seasonPoints) + '</td><td>' + (team.position === 1 || team.gap < 0.0000001 ? '—' : '-' + constructorsPoints(team.gap)) + '</td></tr>').join('');
+    container.innerHTML = '<div class="constructors-heading"><div><p class="eyebrow">' + (data.definition.kind === 'hypothetical' ? 'Retrospective constructors championship' : 'Official constructors championship') + '</p><h3>Constructors Standings</h3></div><p>' + subtitle + '</p></div><div class="table-shell constructors-table-shell"><table class="profile-table constructors-table"><thead><tr><th>Position</th><th>Team</th><th>Constructors points</th><th>Gap</th></tr></thead><tbody>' + rows + '</tbody></table></div>' + renderConstructorProfile(selected, data.definition);
   }
   const enhRoundSortDefaults = { position: 'asc', name: 'asc', flags: 'desc', qualifyingPosition: 'asc', positionChange: 'desc', points: 'desc', lapsLed: 'desc', powerRanking: 'desc' };
   function enhRoundSortHeader(label, key) {
