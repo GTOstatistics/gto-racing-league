@@ -3,7 +3,7 @@
   const state = { seasonIndex: Math.max(0, seasons.findIndex((season) => season.id === '4')), roundIndex: 0, sortKey: 'championshipPosition', sortDirection: 'asc', selectedDriver: null, profileSummarySortKey: 'seasonIndex', profileSummarySortDirection: 'desc', profileH2HSortKey: 'raceMeetings', profileH2HSortDirection: 'desc', profileCarSortKey: 'avgFinish', profileCarSortDirection: 'asc', profileLogSortKey: 'seasonIndex', profileLogSortDirection: 'desc', recordType: 'race', recordPosition: 1, carClass: null, carSortKey: 'points', carSortDirection: 'desc', leadPeriod: 'overall', leadSortKey: 'percentage', leadSortDirection: 'desc', trackSortKey: 'wins', trackSortDirection: 'desc' };
   const elements = {
     tabs: document.querySelector('#season-tabs'), summary: document.querySelector('#season-summary'), statCards: document.querySelector('#stat-cards'),
-    standingsHeaders: document.querySelector('#standings-headers'), standings: document.querySelector('#standings-body'), standingsSortStatus: document.querySelector('#standings-sort-status'), standingsViewControls: document.querySelector('#standings-view-controls'),
+    standingsHeaders: document.querySelector('#standings-headers'), standings: document.querySelector('#standings-body'), standingsSortStatus: document.querySelector('#standings-sort-status'), standingsViewControls: document.querySelector('#standings-view-controls'), constructorsContent: document.querySelector('#constructors-content'),
     raceCards: document.querySelector('#race-cards'), roundSelect: document.querySelector('#round-select'), roundResults: document.querySelector('#round-results'),
     driverSelect: document.querySelector('#driver-select'), driverProfile: document.querySelector('#driver-profile-content'),
     carClassTabs: document.querySelector('#car-class-tabs'), carClassContent: document.querySelector('#car-class-content'),
@@ -628,6 +628,94 @@
     const sorted = sortStandings(standings); const leaderPoints = standings[0]?.points || 1;
     elements.standings.innerHTML = sorted.map((driver) => '<tr><td class="standing-rank ' + (driver.championshipPosition <= 3 ? 'top-three' : '') + '">' + String(driver.championshipPosition).padStart(2, '0') + '</td><td class="driver-name">' + driverLink(driver.name) + '</td><td><div class="points-value">' + number.format(driver.points) + ' <span class="points-track" aria-hidden="true"><span class="points-fill" style="width:' + (driver.points / leaderPoints * 100) + '%"></span></span></div></td><td>' + average(driver.avgFinish) + '</td><td>' + average(driver.avgQualifying) + '</td><td>' + (driver.lapsLed || '<span class="zero">—</span>') + '</td><td>' + (driver.wins || '<span class="zero">—</span>') + '</td><td>' + (driver.podiums || '<span class="zero">—</span>') + '</td><td>' + (driver.poles || '<span class="zero">—</span>') + '</td><td>' + (driver.fastestLaps || '<span class="zero">—</span>') + '</td>' + (showInvertPoints ? '<td>' + (driver.invertPoints || '—') + '</td>' : '') + '<td>' + driver.completed.length + '</td><td class="lap-led-percent">' + (driver.lapsLedPercentage === null ? '—' : driver.lapsLedPercentage.toFixed(1) + '%') + '</td><td class="movement-positive">' + driver.positionsGained + '</td><td class="movement-negative">' + driver.positionsLost + '</td><td class="' + (driver.netPositions > 0 ? 'movement-positive' : driver.netPositions < 0 ? 'movement-negative' : '') + '">' + enhChange(driver.netPositions) + '</td></tr>').join('');
     renderSortControls(); enhRenderProgression();
+  }
+
+  // Centralized roster data keeps the retrospective Season 4 comparison and
+  // the official Season 5 championship on the same future-editable structure.
+  const constructorsTeamsBySeason = {
+    '4': {
+      kind: 'hypothetical',
+      teams: [
+        { id: 'chr', name: 'CHR', drivers: ['Dante Quarato', 'Javin Tucker', 'Austin', 'Braxton Marshall'] },
+        { id: 'jnga', name: 'JNGA Motorsports', drivers: ['David Pinkston', 'Colin Mckevitt', 'Jack Mckevitt', 'Bard Wurton'] },
+        { id: 'clr-honda', name: 'CLR Honda', drivers: ['Slinky', 'Zay Smitty', 'Rashad Metze'] },
+        { id: 'bbamm', name: 'BBAMM', drivers: ['Gavyn Morrison', 'Cross Alberti', 'Landon Beech'] }
+      ]
+    },
+    '5': {
+      kind: 'official',
+      teams: [
+        { id: 'chr', name: 'CHR', drivers: ['Dante Quarato', 'Javin Tucker', 'Austin', 'Braxton Marshall'] },
+        { id: 'jnga', name: 'JNGA Motorsports', drivers: ['David Pinkston', 'Colin Mckevitt', 'Jack Mckevitt', 'Bard Wurton'] },
+        { id: 'clr-honda', name: 'CLR Honda', drivers: ['Slinky', 'Zay Smitty', 'Rashad Metze'] },
+        { id: 'bbamm', name: 'BBAMM', drivers: ['Gavyn Morrison', 'Cross Alberti', 'Landon Beech'] }
+      ]
+    }
+  };
+  function constructorsPoints(value) {
+    if (!Number.isFinite(value)) return '—';
+    return Math.abs(value - Math.round(value)) < 0.0000001 ? number.format(Math.round(value)) : value.toFixed(2);
+  }
+  function constructorsSeasonStandings(season) {
+    const definition = constructorsTeamsBySeason[season.id];
+    if (!definition) return { definition: null, teams: [] };
+    // Season 4 is intentionally calculated with its official point-drop totals,
+    // regardless of whether a visitor temporarily inspects the full standings.
+    const individual = calculateStandings(season, {
+      applyChampionshipPointDrops: season.id === '4',
+      applyChampionshipBonusPoints: true
+    });
+    const individualByName = new Map(individual.map((driver) => [driver.name, driver]));
+    const teams = definition.teams.map((team) => {
+      const members = team.drivers.map((name) => ({ name, driver: individualByName.get(name) || null }));
+      const active = members.filter((member) => Boolean(member.driver));
+      // Official Season 5 always divides by the complete roster. The Season 4
+      // retrospective only divides by people who recorded an actual start.
+      const divisor = definition.kind === 'official' ? members.length : active.length;
+      const totalPoints = active.reduce((total, member) => total + member.driver.points, 0);
+      return {
+        ...team,
+        members,
+        active,
+        inactive: members.filter((member) => !member.driver),
+        totalPoints,
+        divisor,
+        averagePoints: divisor ? totalPoints / divisor : 0
+      };
+    }).sort((first, second) => second.averagePoints - first.averagePoints || first.name.localeCompare(second.name));
+    const leaderAverage = teams[0]?.averagePoints || 0;
+    return {
+      definition,
+      teams: teams.map((team, index) => ({ ...team, position: index + 1, gap: Math.max(0, leaderAverage - team.averagePoints) }))
+    };
+  }
+  function constructorDriverCell(member) {
+    return member.driver ? driverLink(member.driver.name, 'record-driver-link') : escapeHtml(member.name);
+  }
+  function renderConstructorProfile(team, definition) {
+    if (!team) return '';
+    const active = team.active.slice().sort((first, second) => first.driver.championshipPosition - second.driver.championshipPosition || first.name.localeCompare(second.name));
+    const activeRows = active.map((member) => '<tr><td class="standing-rank ' + (member.driver.championshipPosition <= 3 ? 'top-three' : '') + '">' + String(member.driver.championshipPosition).padStart(2, '0') + '</td><td>' + constructorDriverCell(member) + '</td><td class="record-total">' + number.format(member.driver.points) + '</td><td>' + (member.driver.wins || '—') + '</td><td>' + (member.driver.podiums || '—') + '</td></tr>').join('');
+    const inactive = team.inactive.length ? '<div class="constructors-inactive"><strong>Did Not Compete</strong><p>' + team.inactive.map((member) => escapeHtml(member.name) + ' — Did not compete in Season 4').join('<br>') + '</p></div>' : '';
+    const officialNoStartRows = definition.kind === 'official' && team.inactive.length
+      ? team.inactive.map((member) => '<tr class="constructors-no-start"><td>—</td><td>' + constructorDriverCell(member) + '</td><td>0</td><td>—</td><td>—</td></tr>').join('')
+      : '';
+    return '<section id="constructors-profile" class="constructors-profile"><div class="panel-title"><div><p class="eyebrow">Team profile</p><h3>' + escapeHtml(team.name) + '</h3></div><button class="profile-jump-link" type="button" data-constructors-back>Back to Constructors Standings</button></div><div class="constructors-summary"><div><span>Constructors position</span><strong>P' + team.position + '</strong></div><div><span>Average points</span><strong>' + constructorsPoints(team.averagePoints) + '</strong></div><div><span>' + (definition.kind === 'official' ? 'Official roster' : 'Participating roster') + '</span><strong>' + team.divisor + ' driver' + (team.divisor === 1 ? '' : 's') + '</strong></div></div><div class="mini-table-shell"><table class="profile-table constructors-driver-table"><thead><tr><th>Individual position</th><th>Driver</th><th>Individual points</th><th>Wins</th><th>Podiums</th></tr></thead><tbody>' + (activeRows + officialNoStartRows || '<tr><td colspan="5">No team members have a recorded start yet.</td></tr>') + '</tbody></table></div>' + inactive + '</section>';
+  }
+  function renderConstructorsStandings() {
+    const container = elements.constructorsContent;
+    if (!container) return;
+    const season = getSeason();
+    const data = constructorsSeasonStandings(season);
+    if (!data.definition) { container.hidden = true; container.innerHTML = ''; return; }
+    container.hidden = false;
+    if (!data.teams.some((team) => team.id === state.selectedConstructorTeam)) state.selectedConstructorTeam = '';
+    const selected = data.teams.find((team) => team.id === state.selectedConstructorTeam);
+    const subtitle = data.definition.kind === 'hypothetical'
+      ? 'Hypothetical standings using the current team structure and official Season 4 point-drop totals.'
+      : 'Official standings calculated from the current individual Season 5 championship points.';
+    const rows = data.teams.map((team) => '<tr><td class="standing-rank ' + (team.position <= 3 ? 'top-three' : '') + '">' + String(team.position).padStart(2, '0') + '</td><td><button class="constructors-team-link" type="button" data-constructor-team="' + escapeHtml(team.id) + '">' + escapeHtml(team.name) + '</button></td><td class="record-total">' + constructorsPoints(team.averagePoints) + '</td><td>' + (team.position === 1 || team.gap < 0.0000001 ? '—' : '-' + constructorsPoints(team.gap)) + '</td></tr>').join('');
+    container.innerHTML = '<div class="constructors-heading"><div><p class="eyebrow">' + (data.definition.kind === 'hypothetical' ? 'Retrospective constructors championship' : 'Official constructors championship') + '</p><h3>Constructors Standings</h3></div><p>' + subtitle + '</p></div><div class="table-shell constructors-table-shell"><table class="profile-table constructors-table"><thead><tr><th>Position</th><th>Team</th><th>Average points</th><th>Gap</th></tr></thead><tbody>' + rows + '</tbody></table></div>' + renderConstructorProfile(selected, data.definition);
   }
   const enhRoundSortDefaults = { position: 'asc', name: 'asc', flags: 'desc', qualifyingPosition: 'asc', positionChange: 'desc', points: 'desc', lapsLed: 'desc', powerRanking: 'desc' };
   function enhRoundSortHeader(label, key) {
@@ -1306,7 +1394,7 @@
   }
   function renderSeason() {
     const season = getSeason(); const standings = calculateStandings(season, { applyChampionshipPointDrops: getStandingsUsePointDrops(season), applyChampionshipBonusPoints: true });
-    renderTabs(); renderStandingsViewControls(); renderOverview(standings); renderStandings(standings); renderPowerRankings(); renderCarClassStats(); renderSchedule(); renderRoundPicker(); renderRoundResults(); renderComparison(); renderTrackHistory(); renderDidYouKnow();
+    renderTabs(); renderStandingsViewControls(); renderOverview(standings); renderStandings(standings); renderConstructorsStandings(); renderPowerRankings(); renderCarClassStats(); renderSchedule(); renderRoundPicker(); renderRoundResults(); renderComparison(); renderTrackHistory(); renderDidYouKnow();
   }
   function openDriver(name, scroll) {
     const driver = getCareerDriver(name); if (!driver) return;
@@ -1328,6 +1416,19 @@
       comparisonContent: document.querySelector('#comparison-content'), trackHistoryControls: document.querySelector('#track-history-controls'),
       trackHistoryContent: document.querySelector('#track-history-content'), backToTop: document.querySelector('#back-to-top'),
       powerRankingsContent: document.querySelector('#power-rankings-content')
+    });
+    elements.constructorsContent?.addEventListener('click', (event) => {
+      if (event.target.closest('[data-constructors-back]')) {
+        state.selectedConstructorTeam = '';
+        renderConstructorsStandings();
+        document.querySelector('#constructors-content')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+      const team = event.target.closest('[data-constructor-team]');
+      if (!team) return;
+      state.selectedConstructorTeam = team.dataset.constructorTeam;
+      renderConstructorsStandings();
+      document.querySelector('#constructors-profile')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
     elements.progressionControls?.addEventListener('click', (event) => {
       const mode = event.target.closest('[data-progression-mode]'); const driver = event.target.closest('[data-progression-driver]');
