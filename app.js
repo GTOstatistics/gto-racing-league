@@ -638,7 +638,7 @@
       teams: [
         { id: 'chr', name: 'CHR', drivers: ['Dante Quarato', 'Javin Tucker', 'Austin', 'Braxton Marshall'] },
         { id: 'jnga', name: 'JNGA Motorsports', drivers: ['David Pinkston', 'Colin Mckevitt', 'Jack Mckevitt', 'Bard Wurton'] },
-        { id: 'clr-honda', name: 'CLR Honda', drivers: ['Ike Klockman', 'Zay Smitty', 'Rashad Metze'] },
+        { id: 'clr-honda', name: 'OLR Honda', drivers: ['Ike Klockman', 'Zay Smitty', 'Rashad Metze'] },
         { id: 'bbamm', name: 'BBAMM', drivers: ['Gavyn Morrison', 'Cross Alberti', 'Landon Beech', 'Peter Braxton'] }
       ]
     },
@@ -647,7 +647,7 @@
       teams: [
         { id: 'chr', name: 'CHR', drivers: ['Dante Quarato', 'Javin Tucker', 'Austin', 'Braxton Marshall'] },
         { id: 'jnga', name: 'JNGA Motorsports', drivers: ['David Pinkston', 'Colin Mckevitt', 'Jack Mckevitt', 'Bard Wurton'] },
-        { id: 'clr-honda', name: 'CLR Honda', drivers: ['Ike Klockman', 'Zay Smitty', 'Rashad Metze'] },
+        { id: 'clr-honda', name: 'OLR Honda', drivers: ['Ike Klockman', 'Zay Smitty', 'Rashad Metze'] },
         { id: 'bbamm', name: 'BBAMM', drivers: ['Gavyn Morrison', 'Cross Alberti', 'Landon Beech', 'Peter Braxton'] }
       ]
     }
