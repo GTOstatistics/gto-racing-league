@@ -54,7 +54,7 @@
     try {
       state.profile = sharedToken() ? await rpc('sportsbook_my_profile', { device_token: sharedToken() }) : null;
       state.fantasy = sharedToken() ? await rpc('fantasy_get_account', { device_token: sharedToken() }).catch(() => null) : null;
-      const availability = await rpc('sportsbook_public_availability').catch(() => ({ enabled: true }));
+      const availability = await rpc('sportsbook_public_availability').catch(() => ({ enabled: false }));
       state.available = availability?.enabled !== false;
       state.markets = state.available ? await rpc('sportsbook_public_markets', { requested_season: SEASON, requested_round: null }) : [];
       state.leaderboard = await rpc('sportsbook_public_leaderboard');
