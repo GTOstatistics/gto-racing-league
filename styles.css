@@ -877,3 +877,13 @@ tbody tr:hover { background: #fbfcfe; }
   .team-predictions-table { min-width: 650px; }
   .driver-team-card { width: 100%; }
 }
+
+
+/* Handheld browsers keep the complete desktop page canvas. The fixed
+   layout viewport in index.html means the desktop grid and table rules remain
+   active; Safari scales the 1440px content area plus its 40px gutters down
+   across the device instead of rebuilding it as a narrow phone column. */
+@media (hover: none) and (pointer: coarse) {
+  html,
+  body { min-width: 1520px; }
+}
