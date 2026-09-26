@@ -102,10 +102,11 @@
       .map((driver, index) => ({ ...driver, championshipPosition: index + 1 }));
   }
   function getChampionshipFinishingStandings(season) {
-    return calculateStandings(season, { applyChampionshipPointDrops: true, applyChampionshipBonusPoints: true });
-  }
+    return calculateStandings(season, { applyChampionshipPointDrops: true, applyChampionshipBonusPoints: true });  }
 
+  let careerDriversCache = null;
   function getCareerDrivers() {
+    if (careerDriversCache) return careerDriversCache;
     const map = new Map();
     seasons.forEach((season, seasonIndex) => season.drivers.forEach((driver) => {
       if (!map.has(driver.name)) map.set(driver.name, { name: driver.name, entries: [], seasons: [] });
@@ -113,8 +114,8 @@
       const entries = getArchiveRounds(season).map(({ race, index: roundIndex }) => ({ ...driver.results[roundIndex], season, seasonIndex, race, roundIndex }));
       career.entries.push(...entries);
       if (entries.some((result) => result.position !== null || result.qualifyingPosition !== null)) career.seasons.push({ season, seasonIndex, entries });
-    }));
-    return [...map.values()].map((driver) => ({ ...driver, ...getStats(driver.entries), ...getParticipationLapStats(driver.entries) })).sort((a, b) => a.name.localeCompare(b.name));
+    }));    careerDriversCache = [...map.values()].map((driver) => ({ ...driver, ...getStats(driver.entries), ...getParticipationLapStats(driver.entries) })).sort((a, b) => a.name.localeCompare(b.name));
+    return careerDriversCache;
   }
 
   const getCareerDriver = (name) => getCareerDrivers().find((driver) => driver.name === name);
