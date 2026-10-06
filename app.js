@@ -274,14 +274,14 @@
     return rows;
   }
   function recordString(wins, losses, ties) { return `${wins}-${losses}${ties ? `-${ties}` : ''}`; }
-  function renderProfileSelector() {
+  function legacyRenderProfileSelector() {
     const drivers = getCareerDrivers();
     const selectedDriver = getCareerDriver(state.selectedDriver);
     state.selectedDriver = selectedDriver?.name || drivers[0]?.name || null;
     elements.driverSelect.innerHTML = drivers.map((driver) => `<option value="${escapeHtml(driver.name)}" ${driver.name === state.selectedDriver ? 'selected' : ''}>${escapeHtml(driver.name)}</option>`).join('');
     elements.driverSelect.value = state.selectedDriver || '';
   }
-  function renderDriverProfile() {
+  function legacyRenderDriverProfileV1() {
     const driver = getCareerDriver(state.selectedDriver); if (!driver) { elements.driverProfile.innerHTML = '<p class="no-profile">No driver history is available.</p>'; return; }
     const seasonRows = driver.seasons.slice().reverse().map(({ season, entries }) => { const stats = getStats(entries); const rank = calculateStandings(season).find((entry) => entry.name === driver.name); return `<tr><td>${escapeHtml(season.name)}</td><td>${rank ? `P${rank.championshipPosition}` : '—'}</td><td>${stats.completed.length}</td><td>${number.format(stats.points)}</td><td>${stats.wins || '—'}</td><td>${stats.podiums || '—'}</td><td>${stats.poles || '—'}</td><td>${average(stats.avgFinish)}</td></tr>`; }).join('');
     const raceRows = driver.entries.filter((entry) => entry.position !== null || entry.qualifyingPosition !== null).sort((a, b) => b.seasonIndex - a.seasonIndex || a.roundIndex - b.roundIndex).map((entry) => `<tr><td>${escapeHtml(entry.season.name)}</td><td>R${entry.roundIndex + 1}</td><td><strong>${escapeHtml(entry.race.name || 'TBC')}</strong><small>${escapeHtml(entry.race.label || 'Round details unavailable')}</small></td><td>${position(entry.position)}</td><td>${position(entry.qualifyingPosition)}</td><td>${entry.points || '—'}</td><td>${entry.lapsLed || '—'}</td><td class="race-log-notes">${entry.pole ? '<span>Pole</span>' : ''}${entry.fastestLap ? '<span>Fastest lap</span>' : ''}${!entry.pole && !entry.fastestLap ? '—' : ''}</td></tr>`).join('');
@@ -308,7 +308,7 @@
     const active = state.profileLogSortKey === key;
     return `<th><button class="sort-button" type="button" data-profile-log-sort-key="${key}" aria-pressed="${active}">${label} <span class="sort-icon" aria-hidden="true">${active ? (state.profileLogSortDirection === 'asc' ? '↑' : '↓') : '↕'}</span></button></th>`;
   }
-  function renderDriverProfile() {
+  function legacyRenderDriverProfileV2() {
     const driver = getCareerDriver(state.selectedDriver); if (!driver) { elements.driverProfile.innerHTML = '<p class="no-profile">No driver history is available.</p>'; return; }
     const seasonRows = driver.seasons.slice().reverse().map(({ season, entries }) => { const stats = getStats(entries); const rank = calculateStandings(season).find((entry) => entry.name === driver.name); return `<tr><td>${escapeHtml(season.name)}</td><td>${rank ? `P${rank.championshipPosition}` : '—'}</td><td>${stats.completed.length}</td><td>${number.format(stats.points)}</td><td>${stats.wins || '—'}</td><td>${stats.podiums || '—'}</td><td>${stats.poles || '—'}</td><td>${average(stats.avgFinish)}</td></tr>`; }).join('');
     const carAverageRows = getCareerCarClasses().map((carClass) => { const entries = driver.entries.filter((entry) => getCarClass(entry.race) === carClass); const stats = getStats(entries); return { carClass, stats }; }).filter(({ stats }) => stats.completed.length).map(({ carClass, stats }) => `<tr><td><strong>${escapeHtml(carClass)}</strong></td><td>${stats.completed.length}</td><td>${average(stats.avgFinish)}</td><td>${average(stats.avgQualifying)}</td><td>${stats.wins || '—'}</td><td>${stats.podiums || '—'}</td><td>${number.format(stats.points)}</td></tr>`).join('');
@@ -339,7 +339,7 @@
     const sort = getProfileSectionSort(section); const active = sort.key === key;
     return `<th><button class="sort-button" type="button" data-profile-sort-section="${section}" data-profile-sort-key="${key}" aria-pressed="${active}">${label} <span class="sort-icon" aria-hidden="true">${active ? (sort.direction === 'asc' ? '↑' : '↓') : '↕'}</span></button></th>`;
   }
-  function renderDriverProfile() {
+  function legacyRenderDriverProfileV3() {
     const driver = getCareerDriver(state.selectedDriver); if (!driver) { elements.driverProfile.innerHTML = '<p class="no-profile">No driver history is available.</p>'; return; }
     const summaryRows = sortProfileSection(driver.seasons.map(({ season, seasonIndex, entries }) => { const stats = getStats(entries); const standing = calculateStandings(season).find((entry) => entry.name === driver.name); return { season, seasonIndex, championshipPosition: standing?.championshipPosition ?? null, starts: stats.completed.length, points: stats.points, wins: stats.wins, podiums: stats.podiums, poles: stats.poles, avgFinish: stats.avgFinish }; }), 'summary').map((row) => `<tr><td>${escapeHtml(row.season.name)}</td><td>${row.championshipPosition ? `P${row.championshipPosition}` : '—'}</td><td>${row.starts}</td><td>${number.format(row.points)}</td><td>${row.wins || '—'}</td><td>${row.podiums || '—'}</td><td>${row.poles || '—'}</td><td>${average(row.avgFinish)}</td></tr>`).join('');
     const carRows = sortProfileSection(getCareerCarClasses().map((carClass) => { const entries = driver.entries.filter((entry) => getCarClass(entry.race) === carClass); const stats = getStats(entries); return { carClass, starts: stats.completed.length, avgFinish: stats.avgFinish, avgQualifying: stats.avgQualifying, wins: stats.wins, podiums: stats.podiums, points: stats.points }; }).filter((row) => row.starts), 'car').map((row) => `<tr><td><strong>${escapeHtml(row.carClass)}</strong></td><td>${row.starts}</td><td>${average(row.avgFinish)}</td><td>${average(row.avgQualifying)}</td><td>${row.wins || '—'}</td><td>${row.podiums || '—'}</td><td>${number.format(row.points)}</td></tr>`).join('');
@@ -424,7 +424,7 @@
     elements.pointsSystem.innerHTML = finishPoints + bonusPoints;
   }
   function renderSeason() { const standings = calculateStandings(getSeason()); renderTabs(); renderOverview(standings); renderCarClassStats(); renderStandings(standings); renderSchedule(); renderRoundPicker(); renderRoundResults(); }
-  function openDriver(name, scroll = true) { if (!getCareerDriver(name)) return; state.selectedDriver = name; renderProfileSelector(); renderDriverProfile(); if (scroll) document.querySelector('#driver-profile').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  function legacyOpenDriverV1(name, scroll = true) { if (!getCareerDriver(name)) return; state.selectedDriver = name; renderProfileSelector(); renderDriverProfile(); if (scroll) document.querySelector('#driver-profile').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 
   document.addEventListener('click', (event) => { const button = event.target.closest('[data-driver-name]'); if (button) openDriver(button.dataset.driverName); });
   elements.tabs.addEventListener('click', (event) => { const tab = event.target.closest('[data-season-index]'); if (tab) { state.seasonIndex = Number(tab.dataset.seasonIndex); state.standingsMode = seasonHasPointDrops(getSeason()) ? 'drops' : 'full'; state.roundIndex = 0; renderSeason(); } });
@@ -919,7 +919,7 @@
     }).filter((row) => row.starts), 'tracks');
     return '<section class="profile-panel"><div class="panel-title"><div><p class="eyebrow">Circuit form</p><h3>Track performance</h3></div><p>Every GTO circuit where this driver recorded a classified start.</p></div><div class="mini-table-shell"><table class="profile-table"><thead><tr>' + profileSectionHeader('Track', 'tracks', 'track') + profileSectionHeader('Starts', 'tracks', 'starts') + profileSectionHeader('Wins', 'tracks', 'wins') + profileSectionHeader('Podiums', 'tracks', 'podiums') + profileSectionHeader('Poles', 'tracks', 'poles') + profileSectionHeader('Avg. finish', 'tracks', 'avgFinish') + profileSectionHeader('Best finish', 'tracks', 'bestFinish') + profileSectionHeader('Laps led', 'tracks', 'lapsLed') + '</tr></thead><tbody>' + (rows.map((row) => '<tr><td><button type="button" class="profile-jump-link" data-profile-track="' + escapeHtml(row.track) + '">' + escapeHtml(row.track) + '</button></td><td>' + row.starts + '</td><td>' + (row.wins || '—') + '</td><td>' + (row.podiums || '—') + '</td><td>' + (row.poles || '—') + '</td><td>' + average(row.avgFinish) + '</td><td>' + position(row.bestFinish) + '</td><td>' + (row.lapsLed || '—') + '</td></tr>').join('') || '<tr><td colspan="8">No track results recorded.</td></tr>') + '</tbody></table></div></section>';
   }
-  function renderDriverProfile() {
+  function legacyRenderDriverProfileEnhanced() {
     const driver = getCareerDriver(state.selectedDriver); if (!driver) { elements.driverProfile.innerHTML = '<p class="no-profile">No driver history is available.</p>'; return; }
     if (!state.profileTab) state.profileTab = 'overview';
     if (!state.profileRaceSeason || (state.profileRaceSeason !== 'all' && !driver.seasons.some(({ season }) => season.id === state.profileRaceSeason))) {
@@ -1512,15 +1512,21 @@
     const season = getSeason(); const standings = calculateStandings(season, { applyChampionshipPointDrops: getStandingsUsePointDrops(season), applyChampionshipBonusPoints: true });
     renderTabs(); renderStandingsViewControls(); renderOverview(standings); renderStandings(standings); renderConstructorsStandings(); renderPowerRankings(); renderCarClassStats(); renderSchedule(); renderRoundPicker(); renderRoundResults(); renderComparison(); renderTrackHistory(); renderDidYouKnow();
   }
-  function openDriver(name, scroll) {
+  function legacyOpenDriverV2(name, scroll) {
     const driver = getCareerDriver(name);
     if (!driver) {
       state.selectedDriver = getCareerDrivers()[0]?.name || null;
+      state.profileTab = 'overview';
       renderProfileSelector();
       renderDriverProfile();
       return false;
     }
+    const changedDriver = normalizeDriverName(state.selectedDriver) !== normalizeDriverName(driver.name);
     state.selectedDriver = driver.name;
+    // A profile view belongs to the driver that opened it. Starting a newly
+    // selected driver on Overview prevents a stale tab/filter state from a
+    // previous profile from attempting to render against a different record.
+    if (changedDriver) state.profileTab = 'overview';
     state.profileRaceSeason = driver.seasons.slice().sort((a, b) => b.seasonIndex - a.seasonIndex)[0]?.season.id || 'all';
     renderProfileSelector(); renderDriverProfile();
     if (scroll !== false) document.querySelector('#driver-profile').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1745,16 +1751,9 @@
     renderTrackHistoryCrownBase();
     enhDecorateCrownJewelNames(elements.trackHistoryContent);
   };
-  const renderDriverProfileCrownBase = renderDriverProfile;
-  renderDriverProfile = function renderDriverProfileWithCrownJewels() {
-    renderDriverProfileCrownBase();
-    const driver = getCareerDriver(state.selectedDriver);
-    const metrics = elements.driverProfile.querySelector('.profile-metrics');
-    if (driver && metrics && !metrics.querySelector('.crown-jewel-metric')) {
-      metrics.insertAdjacentHTML('beforeend', '<div class="crown-jewel-metric"><strong>' + enhCrownJewelWins(driver.name) + '</strong><span>Crown Jewel wins</span></div>');
-    }
-    enhDecorateCrownJewelNames(elements.driverProfile);
-  };
+  // Driver Profile now owns its complete render path below.  Keeping crown-jewel
+  // decoration out of a render wrapper prevents multiple profile renderers from
+  // wrapping and re-entering one another.
   // Season 5 predictions use archived performance plus recorded Season 5 form.
   // They are estimates, not sportsbook lines or guarantees.
   const predictionSeasonId = '5';
@@ -2500,6 +2499,200 @@
     }
     if (event.target.matches('[data-prediction-h2h-driver]')) { state.predictionH2HDriver = event.target.value; state.predictionH2HDriverSortKey = 'closeness'; state.predictionH2HDriverSortDirection = 'asc'; renderPredictions(); }
   });
+  /*
+   * Driver Profile controller
+   * -------------------------
+   * This is intentionally the single active implementation of the Driver
+   * Profile. Legacy profile declarations above are intentionally unreachable;
+   * this controller is the only active profile navigation and rendering path.
+   * It keeps a private, data-derived
+   * profile id, view state, URL state, and event surface.
+   */
+  const driverProfileController = (() => {
+    const profileState = {
+      driverId: null,
+      tab: 'overview',
+      raceSeason: 'all',
+      sorts: {
+        summary: { key: 'seasonIndex', direction: 'desc' },
+        h2h: { key: 'raceMeetings', direction: 'desc' },
+        car: { key: 'avgFinish', direction: 'asc' },
+        log: { key: 'seasonIndex', direction: 'desc' },
+        tracks: { key: 'track', direction: 'asc' }
+      }
+    };
+    const sortDirections = {
+      summary: { seasonIndex: 'desc', championshipPosition: 'asc', starts: 'desc', points: 'desc', wins: 'desc', podiums: 'desc', poles: 'desc', avgFinish: 'asc' },
+      h2h: { opponent: 'asc', raceWins: 'desc', raceMeetings: 'desc', qualWins: 'desc', qualMeetings: 'desc' },
+      car: { carClass: 'asc', starts: 'desc', avgFinish: 'asc', avgQualifying: 'asc', wins: 'desc', podiums: 'desc', points: 'desc' },
+      log: { seasonIndex: 'desc', roundIndex: 'asc', event: 'asc', position: 'asc', qualifyingPosition: 'asc', positionChange: 'desc', points: 'desc', lapsLed: 'desc', notes: 'desc' },
+      tracks: { track: 'asc', starts: 'desc', wins: 'desc', podiums: 'desc', poles: 'desc', fastestLaps: 'desc', lapsLed: 'desc', avgFinish: 'asc', avgQualifying: 'asc' }
+    };
+    let catalog = null;
+
+    const hasValue = (value) => value !== null && value !== undefined && value !== '';
+    const stableProfileId = (name) => 'driver:' + encodeURIComponent(normalizeDriverName(name));
+    const valueFor = (row, key) => {
+      if (key === 'opponent') return row.opponent?.name || '';
+      if (key === 'event') return row.race?.name || '';
+      if (key === 'notes') return Number(Boolean(row.pole)) + Number(Boolean(row.fastestLap));
+      return row[key];
+    };
+    const compareRows = (scope, rows) => {
+      const sort = profileState.sorts[scope] || { key: Object.keys(sortDirections[scope])[0], direction: 'asc' };
+      return rows.slice().sort((first, second) => {
+        const a = valueFor(first, sort.key); const b = valueFor(second, sort.key);
+        const aMissing = !hasValue(a) || (typeof a === 'number' && !Number.isFinite(a));
+        const bMissing = !hasValue(b) || (typeof b === 'number' && !Number.isFinite(b));
+        if (aMissing || bMissing) return aMissing === bMissing ? 0 : (aMissing ? 1 : -1);
+        const order = typeof a === 'string' ? a.localeCompare(String(b)) : Number(a) - Number(b);
+        const tie = String(first.name || first.carClass || first.track || first.opponent?.name || '').localeCompare(String(second.name || second.carClass || second.track || second.opponent?.name || ''));
+        return (order || tie) * (sort.direction === 'asc' ? 1 : -1);
+      });
+    };
+    const catalogFor = () => {
+      if (catalog) return catalog;
+      const records = getCareerDrivers().map((driver) => ({ ...driver, profileId: stableProfileId(driver.name) }));
+      catalog = {
+        records,
+        byId: new Map(records.map((driver) => [driver.profileId, driver])),
+        byName: new Map(records.map((driver) => [normalizeDriverName(driver.name), driver]))
+      };
+      return catalog;
+    };
+    const resolve = (value) => {
+      if (!hasValue(value)) return null;
+      const lookup = catalogFor(); const candidate = String(value);
+      return lookup.byId.get(candidate) || lookup.byName.get(normalizeDriverName(candidate)) || null;
+    };
+    const current = () => {
+      const lookup = catalogFor();
+      const selected = lookup.byId.get(profileState.driverId);
+      if (selected) return selected;
+      const fallback = lookup.records[0] || null;
+      profileState.driverId = fallback?.profileId || null;
+      state.selectedDriver = fallback?.name || null;
+      return fallback;
+    };
+    const latestSeason = (driver) => driver?.seasons?.slice().sort((a, b) => b.seasonIndex - a.seasonIndex)[0]?.season?.id || 'all';
+    const selectRecord = (candidate, { resetView = false } = {}) => {
+      const driver = resolve(candidate) || catalogFor().records[0] || null;
+      if (!driver) { profileState.driverId = null; state.selectedDriver = null; return null; }
+      const changed = profileState.driverId !== driver.profileId;
+      profileState.driverId = driver.profileId;
+      state.selectedDriver = driver.name;
+      if (changed || resetView) {
+        profileState.tab = 'overview';
+        profileState.raceSeason = latestSeason(driver);
+      }
+      if (profileState.raceSeason !== 'all' && !driver.seasons.some((item) => item.season.id === profileState.raceSeason)) profileState.raceSeason = latestSeason(driver);
+      return driver;
+    };
+    const syncUrl = (driver) => {
+      if (!driver || !window.history?.replaceState) return;
+      const url = new URL(window.location.href);
+      url.searchParams.set('driver', driver.profileId);
+      url.hash = 'driver-profile';
+      window.history.replaceState({}, '', url);
+    };
+    const selectFromUrl = () => {
+      const requested = new URLSearchParams(window.location.search).get('driver');
+      return selectRecord(requested || profileState.driverId || state.selectedDriver, { resetView: false });
+    };
+    const metric = (label, value, className = '') => '<div' + (className ? ' class="' + className + '"' : '') + '><strong>' + value + '</strong><span>' + label + '</span></div>';
+    const sortHeader = (scope, label, key) => {
+      const sort = profileState.sorts[scope]; const active = sort.key === key;
+      return '<th><button class="sort-button" type="button" data-driver-profile-sort-scope="' + scope + '" data-driver-profile-sort-key="' + key + '" aria-pressed="' + active + '">' + label + ' <span class="sort-icon" aria-hidden="true">' + (active ? (sort.direction === 'asc' ? '↑' : '↓') : '↕') + '</span></button></th>';
+    };
+    const tabs = () => '<div class="profile-data-tabs" role="tablist" aria-label="Driver profile views">' + [['overview', 'Overview'], ['tracks', 'Tracks'], ['team', 'Team'], ['charts', 'Charts']].map(([id, label]) => '<button type="button" role="tab" data-driver-profile-tab="' + id + '" aria-selected="' + (profileState.tab === id) + '">' + label + '</button>').join('') + '</div>';
+    const safeStats = (entries) => getStats(Array.isArray(entries) ? entries : []);
+    const summaryRows = (driver) => compareRows('summary', driver.seasons.map(({ season, seasonIndex, entries }) => {
+      const stats = safeStats(entries); const standing = getChampionshipFinishingStandings(season).find((entry) => entry.name === driver.name);
+      return { season, seasonIndex, championshipPosition: standing?.championshipPosition ?? null, starts: stats.completed.length, points: stats.points, wins: stats.wins, podiums: stats.podiums, poles: stats.poles, avgFinish: stats.avgFinish };
+    }));
+    const carRows = (driver) => compareRows('car', getCareerCarClasses().map((carClass) => {
+      const stats = safeStats(driver.entries.filter((entry) => getCarClass(entry.race || {}) === carClass));
+      return { carClass, starts: stats.completed.length, avgFinish: stats.avgFinish, avgQualifying: stats.avgQualifying, wins: stats.wins, podiums: stats.podiums, points: stats.points };
+    }).filter((row) => row.starts));
+    const raceRows = (driver) => compareRows('log', driver.entries.filter((entry) => enhResultHasFinish(entry) || enhResultHasQualifying(entry)).filter((entry) => profileState.raceSeason === 'all' || entry.season?.id === profileState.raceSeason));
+    const trackRows = (driver) => {
+      const grouped = new Map();
+      driver.entries.filter((entry) => enhResultHasFinish(entry) || enhResultHasQualifying(entry)).forEach((entry) => {
+        const track = entry.race?.name || 'Unknown track';
+        if (!grouped.has(track)) grouped.set(track, []);
+        grouped.get(track).push(entry);
+      });
+      return compareRows('tracks', [...grouped.entries()].map(([track, entries]) => {
+        const stats = safeStats(entries); return { track, starts: stats.completed.length, wins: stats.wins, podiums: stats.podiums, poles: stats.poles, fastestLaps: stats.fastestLaps, lapsLed: stats.lapsLed, avgFinish: stats.avgFinish, avgQualifying: stats.avgQualifying };
+      }));
+    };
+    const hero = (driver) => {
+      const bests = enhCareerBests(driver.name);
+      return '<article class="profile-hero"><div><p class="eyebrow">Career at a glance</p><h3>' + escapeHtml(driver.name) + '</h3><p>' + driver.seasons.length + ' season' + (driver.seasons.length === 1 ? '' : 's') + ' · ' + driver.completed.length + ' race start' + (driver.completed.length === 1 ? '' : 's') + ' · ' + number.format(driver.points) + ' career points</p></div><div class="profile-metrics">' + metric('Wins', driver.wins) + metric('Podiums', driver.podiums) + metric('Poles', driver.poles) + metric('Fastest laps', driver.fastestLaps) + metric('Laps led', driver.lapsLed) + metric('Crown Jewel wins', enhCrownJewelWins(driver.name), 'crown-jewel-metric') + '</div></article>' + driverCurrentTeamCard(driver.name) + enhCareerBestsBox(bests) + tabs();
+    };
+    const overview = (driver) => {
+      const summaries = summaryRows(driver); const cars = carRows(driver); const h2h = compareRows('h2h', getHeadToHead(driver.name)); const races = raceRows(driver);
+      const seasonOptions = '<option value="all"' + (profileState.raceSeason === 'all' ? ' selected' : '') + '>All Seasons</option>' + seasons.map((season) => '<option value="' + escapeHtml(season.id) + '"' + (profileState.raceSeason === season.id ? ' selected' : '') + '>' + escapeHtml(season.name) + '</option>').join('');
+      return '<div class="profile-layout"><section class="profile-panel"><div class="panel-title"><div><p class="eyebrow">Season by season</p><h3>Championship summary</h3></div><p>Click a heading to sort.</p></div><div class="mini-table-shell"><table class="profile-table"><thead><tr>' + sortHeader('summary', 'Season', 'seasonIndex') + sortHeader('summary', 'Finish', 'championshipPosition') + sortHeader('summary', 'Starts', 'starts') + sortHeader('summary', 'Points', 'points') + sortHeader('summary', 'Wins', 'wins') + sortHeader('summary', 'Podiums', 'podiums') + sortHeader('summary', 'Poles', 'poles') + sortHeader('summary', 'Avg. finish', 'avgFinish') + '</tr></thead><tbody>' + (summaries.map((row) => '<tr><td>' + escapeHtml(row.season.name) + '</td><td>' + position(row.championshipPosition) + '</td><td>' + row.starts + '</td><td>' + number.format(row.points) + '</td><td>' + (row.wins || '—') + '</td><td>' + (row.podiums || '—') + '</td><td>' + (row.poles || '—') + '</td><td>' + average(row.avgFinish) + '</td></tr>').join('') || '<tr><td colspan="8">No season results are available.</td></tr>') + '</tbody></table></div></section><section class="profile-panel"><div class="panel-title"><div><p class="eyebrow">Against the field</p><h3>Head-to-head</h3></div><p>W-L-T uses shared results only.</p></div><div class="mini-table-shell"><table class="profile-table"><thead><tr>' + sortHeader('h2h', 'Opponent', 'opponent') + sortHeader('h2h', 'Race W-L-T', 'raceWins') + sortHeader('h2h', 'Races', 'raceMeetings') + sortHeader('h2h', 'Qual. W-L-T', 'qualWins') + sortHeader('h2h', 'Qual.', 'qualMeetings') + '</tr></thead><tbody>' + (h2h.map((row) => '<tr><td>' + driverLink(row.opponent.name, 'record-driver-link') + '</td><td>' + (row.raceMeetings ? recordString(row.raceWins, row.raceLosses, row.raceTies) : '—') + '</td><td>' + (row.raceMeetings || '—') + '</td><td>' + (row.qualMeetings ? recordString(row.qualWins, row.qualLosses, row.qualTies) : '—') + '</td><td>' + (row.qualMeetings || '—') + '</td></tr>').join('') || '<tr><td colspan="5">No shared results recorded.</td></tr>') + '</tbody></table></div></section></div><section class="profile-panel car-average-panel"><div class="panel-title"><div><p class="eyebrow">By car type</p><h3>Average finish by class</h3></div><p>Career results across every archived season.</p></div><div class="mini-table-shell"><table class="profile-table"><thead><tr>' + sortHeader('car', 'Car class', 'carClass') + sortHeader('car', 'Starts', 'starts') + sortHeader('car', 'Avg. finish', 'avgFinish') + sortHeader('car', 'Avg. qualifying', 'avgQualifying') + sortHeader('car', 'Wins', 'wins') + sortHeader('car', 'Podiums', 'podiums') + sortHeader('car', 'Points', 'points') + '</tr></thead><tbody>' + (cars.map((row) => '<tr><td><strong>' + escapeHtml(row.carClass) + '</strong></td><td>' + row.starts + '</td><td>' + average(row.avgFinish) + '</td><td>' + average(row.avgQualifying) + '</td><td>' + (row.wins || '—') + '</td><td>' + (row.podiums || '—') + '</td><td>' + number.format(row.points) + '</td></tr>').join('') || '<tr><td colspan="7">No classified class results recorded.</td></tr>') + '</tbody></table></div></section><section class="profile-panel race-log-panel"><div class="panel-title"><div><p class="eyebrow">Every race result</p><h3>Complete race log</h3></div><label class="profile-season-filter">Season <select data-driver-profile-season>' + seasonOptions + '</select></label></div><p class="profile-filter-note">Choose a season to view only those races. New seasons appear automatically.</p><div class="mini-table-shell"><table class="profile-table race-log"><thead><tr>' + sortHeader('log', 'Season', 'seasonIndex') + sortHeader('log', 'Round', 'roundIndex') + sortHeader('log', 'Event', 'event') + sortHeader('log', 'Finish', 'position') + sortHeader('log', 'Qual.', 'qualifyingPosition') + sortHeader('log', 'Change', 'positionChange') + sortHeader('log', 'Points', 'points') + sortHeader('log', 'Led', 'lapsLed') + sortHeader('log', 'Notes', 'notes') + '</tr></thead><tbody>' + (races.map((entry) => '<tr><td>' + escapeHtml(entry.season?.name || '—') + '</td><td>R' + (Number(entry.roundIndex) + 1) + '</td><td><button type="button" class="profile-jump-link" data-driver-profile-race-season-index="' + entry.seasonIndex + '" data-driver-profile-race-round-index="' + entry.roundIndex + '">' + escapeHtml(entry.race?.name || 'TBC') + '</button><small>' + escapeHtml(entry.race?.label || 'Round details unavailable') + '</small></td><td>' + position(entry.position) + '</td><td>' + position(entry.qualifyingPosition) + '</td><td class="' + (enhPositionChange(entry) > 0 ? 'movement-positive' : enhPositionChange(entry) < 0 ? 'movement-negative' : '') + '">' + enhChange(enhPositionChange(entry)) + '</td><td>' + (entry.points || '—') + '</td><td>' + (entry.lapsLed || '—') + '</td><td class="race-log-notes">' + (entry.pole ? '<span>Pole</span>' : '') + (entry.fastestLap ? '<span>Fastest lap</span>' : '') + (!entry.pole && !entry.fastestLap ? '—' : '') + '</td></tr>').join('') || '<tr><td colspan="9">No round-by-round results recorded for this filter.</td></tr>') + '</tbody></table></div></section>';
+    };
+    const tracks = (driver) => {
+      const rows = trackRows(driver);
+      return '<section class="profile-panel"><div class="panel-title"><div><p class="eyebrow">Track record</p><h3>Results by track</h3></div><p>Click a heading to sort.</p></div><div class="mini-table-shell"><table class="profile-table"><thead><tr>' + sortHeader('tracks', 'Track', 'track') + sortHeader('tracks', 'Starts', 'starts') + sortHeader('tracks', 'Wins', 'wins') + sortHeader('tracks', 'Podiums', 'podiums') + sortHeader('tracks', 'Poles', 'poles') + sortHeader('tracks', 'Fastest laps', 'fastestLaps') + sortHeader('tracks', 'Laps led', 'lapsLed') + sortHeader('tracks', 'Avg. finish', 'avgFinish') + sortHeader('tracks', 'Avg. qualifying', 'avgQualifying') + '</tr></thead><tbody>' + (rows.map((row) => '<tr><td><button type="button" class="profile-jump-link" data-driver-profile-track="' + escapeHtml(row.track) + '">' + escapeHtml(row.track) + '</button></td><td>' + row.starts + '</td><td>' + (row.wins || '—') + '</td><td>' + (row.podiums || '—') + '</td><td>' + (row.poles || '—') + '</td><td>' + (row.fastestLaps || '—') + '</td><td>' + (row.lapsLed || '—') + '</td><td>' + average(row.avgFinish) + '</td><td>' + average(row.avgQualifying) + '</td></tr>').join('') || '<tr><td colspan="9">No track history is available.</td></tr>') + '</tbody></table></div></section>';
+    };
+    const render = () => {
+      const driver = current();
+      if (!driver) { elements.driverProfile.innerHTML = '<p class="no-profile">No driver history is available.</p>'; return; }
+      const body = profileState.tab === 'tracks' ? tracks(driver) : profileState.tab === 'team' ? renderDriverTeamStatistics(driver.name) : profileState.tab === 'charts' ? enhProfileChartSvg(driver, enhEntriesWithResult(driver.entries)) : overview(driver);
+      elements.driverProfile.innerHTML = hero(driver) + body;
+      enhDecorateCrownJewelNames(elements.driverProfile);
+    };
+    const renderSelector = () => {
+      const driver = current();
+      elements.driverSelect.innerHTML = catalogFor().records.map((record) => '<option value="' + escapeHtml(record.profileId) + '" data-driver-name="' + escapeHtml(record.name) + '"' + (record.profileId === driver?.profileId ? ' selected' : '') + '>' + escapeHtml(record.name) + '</option>').join('');
+      elements.driverSelect.value = driver?.profileId || '';
+    };
+    const open = (value, scroll = true, updateUrl = true) => {
+      const found = resolve(value);
+      const driver = selectRecord(value, { resetView: Boolean(found && found.profileId !== profileState.driverId) });
+      renderSelector(); render();
+      if (found && updateUrl) syncUrl(driver);
+      if (scroll) document.querySelector('#driver-profile')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return Boolean(found);
+    };
+    const onChange = (event) => {
+      if (!event.target.matches('[data-driver-profile-season]')) return;
+      profileState.raceSeason = event.target.value;
+      render();
+    };
+    const onClick = (event) => {
+      const tab = event.target.closest('[data-driver-profile-tab]');
+      if (tab) { profileState.tab = tab.dataset.driverProfileTab; render(); return; }
+      const sort = event.target.closest('[data-driver-profile-sort-scope]');
+      if (sort) {
+        const scope = sort.dataset.driverProfileSortScope; const key = sort.dataset.driverProfileSortKey; const currentSort = profileState.sorts[scope];
+        if (!currentSort || !sortDirections[scope]?.[key]) return;
+        profileState.sorts[scope] = currentSort.key === key ? { key, direction: currentSort.direction === 'asc' ? 'desc' : 'asc' } : { key, direction: sortDirections[scope][key] };
+        render(); return;
+      }
+      const race = event.target.closest('[data-driver-profile-race-season-index]');
+      if (race) {
+        state.seasonIndex = Number(race.dataset.driverProfileRaceSeasonIndex);
+        const archiveIndex = getArchiveRounds(getSeason()).findIndex((round) => round.index === Number(race.dataset.driverProfileRaceRoundIndex));
+        if (archiveIndex >= 0) { state.roundIndex = archiveIndex; renderSeason(); document.querySelector('#results')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        return;
+      }
+      const track = event.target.closest('[data-driver-profile-track]');
+      if (track) { state.selectedTrack = track.dataset.driverProfileTrack; renderTrackHistory(); document.querySelector('#track-history')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    };
+    elements.driverProfile.addEventListener('change', onChange);
+    elements.driverProfile.addEventListener('click', onClick);
+    window.addEventListener('popstate', () => { selectFromUrl(); renderSelector(); render(); });
+    return { open, render, renderSelector, selectFromUrl, current };
+  })();
+  function renderProfileSelector() { driverProfileController.renderSelector(); }
+  function renderDriverProfile() { driverProfileController.render(); }
+  function openDriver(value, scroll = true) { return driverProfileController.open(value, scroll, true); }
+
   setupTeams();
   window.GTO_LEAGUE = {
     seasons,
@@ -2520,5 +2713,5 @@
     predictionAmericanOdds,
     predictionSeasonId
   };
-  renderPointsSystem(); renderSeason(); renderProfileSelector(); renderDriverProfile(); renderRecords();
+  renderPointsSystem(); renderSeason(); driverProfileController.selectFromUrl(); renderProfileSelector(); renderDriverProfile(); renderRecords();
 })();

@@ -481,8 +481,12 @@
     return `<section class="profile-panel fantasy-driver-profile-panel" data-fantasy-racing-driver="${esc(profile.driver_name)}"><div class="panel-title"><div><p class="eyebrow">Fantasy League</p><h3>Fantasy performance</h3></div><p>Saved Fantasy tiers, picks, and officially scored rounds.</p></div><div class="fantasy-stat-grid">${fantasyStat('Times Selected', summary.times_selected)}${fantasyStat('Selection Rate', summary.career_selection_rate == null ? 'N/A' : `${safeNumber(summary.career_selection_rate).toFixed(1)}%`)}${fantasyStat('Avg. Fantasy Pts', summary.average_fantasy_points == null ? 'N/A' : safeNumber(summary.average_fantasy_points).toFixed(1))}${fantasyStat('High Score', summary.highest_fantasy_score)}${fantasyStat('Low Score', summary.lowest_fantasy_score)}${fantasyStat('Fantasy MVPs', summary.fantasy_mvp_awards)}${fantasyStat('Fantasy Busts', summary.fantasy_bust_awards)}</div>${byTier.length ? `<div class="mini-table-shell"><table class="profile-table"><thead><tr><th>Tier</th><th>Selections</th><th>Avg. Fantasy Points</th><th>Best Fantasy Score</th></tr></thead><tbody>${byTier.map((row) => `<tr><td>Tier ${row.tier}</td><td>${row.selections}</td><td>${safeNumber(row.average_fantasy_points).toFixed(1)}</td><td>${row.best_fantasy_score}</td></tr>`).join('')}</tbody></table></div>` : '<p class="fantasy-empty">N/A — this driver has not appeared in a scored Fantasy tier yet.</p>'}${history.length ? `<details><summary>Race-by-race Fantasy history</summary><div class="mini-table-shell"><table class="profile-table"><thead><tr><th>Season</th><th>Round</th><th>Tier</th><th>Fantasy Pts</th><th>Projected</th><th>Selection %</th><th>Awards</th></tr></thead><tbody>${history.map((row) => `<tr><td>S${row.season_id}</td><td>R${Number(row.race_index) + 1}</td><td>T${row.tier}</td><td>${row.fantasy_points}</td><td>${row.projected_fantasy_points == null ? 'N/A' : safeNumber(row.projected_fantasy_points).toFixed(1)}</td><td>${row.selection_percentage == null ? 'N/A' : `${safeNumber(row.selection_percentage).toFixed(1)}%`}</td><td>${row.fantasy_mvp ? 'MVP' : ''}${row.fantasy_bust ? `${row.fantasy_mvp ? ' · ' : ''}Bust` : ''}${!row.fantasy_mvp && !row.fantasy_bust ? dash : ''}</td></tr>`).join('')}</tbody></table></div></details>` : ''}<button type="button" class="fantasy-text-button" data-fantasy-open-driver="${esc(profile.driver_name)}">Open full Fantasy Driver Profile</button></section>`;
   }
   let racingFantasyInjectionBusy = false;
+  function selectedRacingDriverName() {
+    const select = document.querySelector('#driver-select');
+    return select?.selectedOptions?.[0]?.dataset.driverName || select?.value || '';
+  }
   async function injectRacingDriverFantasy() {
-    const host = document.querySelector('#driver-profile-content'); const name = document.querySelector('#driver-select')?.value;
+    const host = document.querySelector('#driver-profile-content'); const name = selectedRacingDriverName();
     const alreadyInserted = host && [...host.querySelectorAll('[data-fantasy-racing-driver]')].some((row) => row.dataset.fantasyRacingDriver === name);
     if (!host || !name || racingFantasyInjectionBusy || alreadyInserted) return;
     racingFantasyInjectionBusy = true;
@@ -516,7 +520,10 @@
       if (driverLink) { await openFantasyDriver(driverLink.dataset.fantasyOpenDriver); return; }
       if (racingDriver) {
         const select = document.querySelector('#driver-select');
-        if (select) { select.value = racingDriver.dataset.fantasyOpenRacingDriver; select.dispatchEvent(new Event('change', { bubbles: true })); }
+        if (select) {
+          const option = [...select.options].find((item) => item.dataset.driverName === racingDriver.dataset.fantasyOpenRacingDriver || item.value === racingDriver.dataset.fantasyOpenRacingDriver);
+          if (option) { select.value = option.value; select.dispatchEvent(new Event('change', { bubbles: true })); }
+        }
         document.querySelector('#driver-profile')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return;
       }
       if (raceLink) {
