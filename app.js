@@ -101,10 +101,18 @@
       .sort((a, b) => b.points - a.points || b.wins - a.wins || a.avgFinish - b.avgFinish || a.name.localeCompare(b.name))
       .map((driver, index) => ({ ...driver, championshipPosition: index + 1 }));
   }
+  const championshipStandingsCache = new Map();
   function getChampionshipFinishingStandings(season) {
-    return calculateStandings(season, { applyChampionshipPointDrops: true, applyChampionshipBonusPoints: true });  }
+    if (!season) return [];
+    if (!championshipStandingsCache.has(season.id)) {
+      championshipStandingsCache.set(season.id, calculateStandings(season, { applyChampionshipPointDrops: true, applyChampionshipBonusPoints: true }));
+    }
+    return championshipStandingsCache.get(season.id);
+  }
 
+  const normalizeDriverName = (value) => String(value ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
   let careerDriversCache = null;
+  let careerDriverLookup = null;
   function getCareerDrivers() {
     if (careerDriversCache) return careerDriversCache;
     const map = new Map();
@@ -114,11 +122,20 @@
       const entries = getArchiveRounds(season).map(({ race, index: roundIndex }) => ({ ...driver.results[roundIndex], season, seasonIndex, race, roundIndex }));
       career.entries.push(...entries);
       if (entries.some((result) => result.position !== null || result.qualifyingPosition !== null)) career.seasons.push({ season, seasonIndex, entries });
-    }));    careerDriversCache = [...map.values()].map((driver) => ({ ...driver, ...getStats(driver.entries), ...getParticipationLapStats(driver.entries) })).sort((a, b) => a.name.localeCompare(b.name));
+    }));
+    careerDriversCache = [...map.values()]
+      .map((driver) => ({ ...driver, ...getStats(driver.entries), ...getParticipationLapStats(driver.entries) }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    careerDriverLookup = new Map(careerDriversCache.map((driver) => [normalizeDriverName(driver.name), driver]));
     return careerDriversCache;
   }
 
-  
+  const getCareerDriver = (name) => {
+    const normalizedName = normalizeDriverName(name);
+    if (!normalizedName) return null;
+    getCareerDrivers();
+    return careerDriverLookup?.get(normalizedName) || null;
+  };
   const driverLink = (name, className = 'driver-link') => `<button class="${className}" type="button" data-driver-name="${escapeHtml(name)}">${escapeHtml(name)}</button>`;
   function roundResultRows(season, roundIndex) {
     const round = getArchiveRounds(season)[roundIndex]; if (!round) return [];
@@ -237,8 +254,10 @@
     elements.roundResults.innerHTML = `<div class="round-results-header"><div><p class="round-label">Round ${state.roundIndex + 1} · ${escapeHtml(race.label || 'Race details unavailable')}</p><h3>${escapeHtml(race.name || 'TBC')}</h3></div><p>${results.length ? `${results.length} driver record${results.length === 1 ? '' : 's'} · P = finish · Q = qualifying` : 'No classified result recorded'}</p></div>${results.length ? `<div class="results-list">${rows}</div>` : '<p class="no-results">This round does not have a recorded classified result in the supplied score sheet.</p>'}`;
   }
 
+  const careerHeadToHeadCache = new Map();
   function getHeadToHead(targetName) {
-    return getCareerDrivers().filter((driver) => driver.name !== targetName).map((opponent) => {
+    if (careerHeadToHeadCache.has(targetName)) return careerHeadToHeadCache.get(targetName);
+    const rows = getCareerDrivers().filter((driver) => driver.name !== targetName).map((opponent) => {
       let raceWins = 0; let raceLosses = 0; let raceTies = 0; let qualWins = 0; let qualLosses = 0; let qualTies = 0;
       seasons.forEach((season) => {
         const target = season.drivers.find((driver) => driver.name === targetName); const rival = season.drivers.find((driver) => driver.name === opponent.name);
@@ -251,11 +270,16 @@
       });
       return { opponent, raceWins, raceLosses, raceTies, raceMeetings: raceWins + raceLosses + raceTies, qualWins, qualLosses, qualTies, qualMeetings: qualWins + qualLosses + qualTies };
     }).filter((row) => row.raceMeetings || row.qualMeetings).sort((a, b) => b.raceMeetings - a.raceMeetings || b.raceWins - a.raceWins || a.opponent.name.localeCompare(b.opponent.name));
+    careerHeadToHeadCache.set(targetName, rows);
+    return rows;
   }
   function recordString(wins, losses, ties) { return `${wins}-${losses}${ties ? `-${ties}` : ''}`; }
   function renderProfileSelector() {
-    const getCareerDriver = (name) => { const normalizedName = String(name ?? '').trim().toLowerCase(); return normalizedName ? getCareerDrivers().find((driver) => driver.name.trim().toLowerCase() === normalizedName) || null : null; };
+    const drivers = getCareerDrivers();
+    const selectedDriver = getCareerDriver(state.selectedDriver);
+    state.selectedDriver = selectedDriver?.name || drivers[0]?.name || null;
     elements.driverSelect.innerHTML = drivers.map((driver) => `<option value="${escapeHtml(driver.name)}" ${driver.name === state.selectedDriver ? 'selected' : ''}>${escapeHtml(driver.name)}</option>`).join('');
+    elements.driverSelect.value = state.selectedDriver || '';
   }
   function renderDriverProfile() {
     const driver = getCareerDriver(state.selectedDriver); if (!driver) { elements.driverProfile.innerHTML = '<p class="no-profile">No driver history is available.</p>'; return; }
@@ -1489,11 +1513,18 @@
     renderTabs(); renderStandingsViewControls(); renderOverview(standings); renderStandings(standings); renderConstructorsStandings(); renderPowerRankings(); renderCarClassStats(); renderSchedule(); renderRoundPicker(); renderRoundResults(); renderComparison(); renderTrackHistory(); renderDidYouKnow();
   }
   function openDriver(name, scroll) {
-    const driver = getCareerDriver(name); if (!driver) return;
-    state.selectedDriver = name;
+    const driver = getCareerDriver(name);
+    if (!driver) {
+      state.selectedDriver = getCareerDrivers()[0]?.name || null;
+      renderProfileSelector();
+      renderDriverProfile();
+      return false;
+    }
+    state.selectedDriver = driver.name;
     state.profileRaceSeason = driver.seasons.slice().sort((a, b) => b.seasonIndex - a.seasonIndex)[0]?.season.id || 'all';
     renderProfileSelector(); renderDriverProfile();
     if (scroll !== false) document.querySelector('#driver-profile').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return true;
   }
   function setupEnhancedArchive() {
     Object.assign(state, {
