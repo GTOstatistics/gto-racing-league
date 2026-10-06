@@ -118,7 +118,7 @@
     return careerDriversCache;
   }
 
-  const getCareerDriver = (name) => getCareerDrivers().find((driver) => driver.name === name);
+  
   const driverLink = (name, className = 'driver-link') => `<button class="${className}" type="button" data-driver-name="${escapeHtml(name)}">${escapeHtml(name)}</button>`;
   function roundResultRows(season, roundIndex) {
     const round = getArchiveRounds(season)[roundIndex]; if (!round) return [];
@@ -254,7 +254,7 @@
   }
   function recordString(wins, losses, ties) { return `${wins}-${losses}${ties ? `-${ties}` : ''}`; }
   function renderProfileSelector() {
-    const drivers = getCareerDrivers(); if (!state.selectedDriver || !drivers.some((driver) => driver.name === state.selectedDriver)) state.selectedDriver = drivers[0]?.name || null;
+    const getCareerDriver = (name) => { const normalizedName = String(name ?? '').trim().toLowerCase(); return normalizedName ? getCareerDrivers().find((driver) => driver.name.trim().toLowerCase() === normalizedName) || null : null; };
     elements.driverSelect.innerHTML = drivers.map((driver) => `<option value="${escapeHtml(driver.name)}" ${driver.name === state.selectedDriver ? 'selected' : ''}>${escapeHtml(driver.name)}</option>`).join('');
   }
   function renderDriverProfile() {
